@@ -10,7 +10,7 @@ It runs headless on a Raspberry Pi 3 A+ tucked inside or beside the globe, plays
 
 ## Hardware
 
-- **VTech Genius XL Globe** — the globe itself (SONiX HID device, VID `0x0c45` / PID `0x7700`)
+- **Oregon Scientific Horizon Globe** — the globe itself (SONiX HID device, VID `0x0c45` / PID `0x7700`)
 - **Raspberry Pi 3 A+** — runs everything; fits neatly alongside the globe's existing electronics
 - **USB stylus** — the globe's original pen, connected to the Pi over USB; reports as a HID keyboard device
 - **Bluetooth speaker** — for wireless audio; 3.5mm jack also works as a fallback

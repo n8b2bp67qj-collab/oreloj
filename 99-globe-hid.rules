@@ -1,4 +1,4 @@
-# SONiX pen (VTech globe stylus) — VID:0x0c45 PID:0x7700
+# SONiX pen (Oregon Scientific Horizon globe stylus) — VID:0x0c45 PID:0x7700
 # Grants the 'input' group read access to the raw HID device and the evdev
 # event node so globe.py can grab the pen without running as root.
 

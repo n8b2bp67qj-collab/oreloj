@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Globe Radio — VTech Genius XL Globe (SONiX HID, VID:0x0c45 PID:0x7700)
+# Globe Radio — Oregon Scientific Horizon Globe (SONiX HID, VID:0x0c45 PID:0x7700)
 # Input: pynput keyboard listener using vk codes (layout-independent).
 # Tap a country → play a curated or Radio Browser stream.
 # Tap an action zone → execute action (e.g. favourite toggle) with TTS feedback.
