@@ -1,0 +1,7 @@
+# SONiX pen (VTech globe stylus) — VID:0x0c45 PID:0x7700
+# Grants the 'input' group read access to the raw HID device and the evdev
+# event node so globe.py can grab the pen without running as root.
+
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0c45", ATTRS{idProduct}=="7700", MODE="0660", GROUP="input"
+SUBSYSTEM=="usb",    ATTRS{idVendor}=="0c45", ATTRS{idProduct}=="7700", MODE="0660", GROUP="input"
+SUBSYSTEM=="input",  ATTRS{idVendor}=="0c45", ATTRS{idProduct}=="7700", MODE="0660", GROUP="input"

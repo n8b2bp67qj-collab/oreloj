@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+venv/
+.env
+
+# Logs
+*.log
+logs/
+
+# Session / working notes (Claude Cowork artifacts)
+SESSION_RECAP*.md
+PROJECT_REVIEW.html
+admin_preview.html
+setup-card.html

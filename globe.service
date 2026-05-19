@@ -1,0 +1,21 @@
+[Unit]
+Description=Globe Radio — tap-to-stream service
+After=network-online.target sound.target pulseaudio.service pipewire-pulse.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/globe
+ExecStart=/usr/bin/python3 %h/globe/globe.py
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=5
+Environment=PULSE_RUNTIME_PATH=%t/pulse
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=%t/bus
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=globe
+
+[Install]
+WantedBy=default.target

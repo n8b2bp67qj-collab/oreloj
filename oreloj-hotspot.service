@@ -1,0 +1,18 @@
+[Unit]
+Description=Oreloj Hotspot Fallback
+# Run after NM is up, but don't block on network-online (that would deadlock
+# when there's no Wi-Fi — which is exactly when we need this service)
+After=NetworkManager.service
+Wants=NetworkManager.service
+
+[Service]
+Type=oneshot
+ExecStart=/home/oreloj/globe/oreloj-hotspot.sh
+# Don't restart — if the script decides no hotspot is needed, that's final
+# until next boot.  NM handles the rest.
+RemainAfterExit=no
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

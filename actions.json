@@ -1,0 +1,26 @@
+{
+  "zones": [
+    {"code": "a0337f", "action": "favourite_toggle", "label": "Zone A", "description": "", "position": null},
+    {"code": "a0137f", "action": "favourite_toggle", "label": "Zone B", "description": "", "position": null},
+    {"code": "a0338f", "action": "favourite_toggle", "label": "Zone C", "description": "", "position": null},
+    {"code": "a0342f", "action": "favourite_toggle", "label": "Zone D", "description": "", "position": null},
+    {"code": "a0308f", "action": "favourite_toggle", "label": "Zone E", "description": "", "position": null},
+    {"code": "TBD_1", "action": "volume_up", "label": "Volume Up", "description": "Tap to increase volume by 10", "position": null},
+    {"code": "TBD_2", "action": "volume_down", "label": "Volume Down", "description": "Tap to decrease volume by 10", "position": null},
+    {"code": "TBD_3", "action": "random", "label": "Random Station", "description": "Tap for a surprise radio station", "position": null},
+    {"code": "TBD_4", "action": "preset_1", "label": "Preset 1", "description": "", "position": null},
+    {"code": "TBD_5", "action": "preset_2", "label": "Preset 2", "description": "", "position": null},
+    {"code": "TBD_6", "action": "preset_3", "label": "Preset 3", "description": "", "position": null},
+    {"code": "TBD_7", "action": "preset_4", "label": "Preset 4", "description": "", "position": null},
+    {"code": "TBD_8", "action": "preset_5", "label": "Preset 5", "description": "", "position": null},
+    {"code": "TBD_9", "action": "preset_6", "label": "Preset 6", "description": "", "position": null}
+  ],
+  "presets": [
+    {"slot": 1, "name": "", "url": "", "label": "Preset 1"},
+    {"slot": 2, "name": "", "url": "", "label": "Preset 2"},
+    {"slot": 3, "name": "", "url": "", "label": "Preset 3"},
+    {"slot": 4, "name": "", "url": "", "label": "Preset 4"},
+    {"slot": 5, "name": "", "url": "", "label": "Preset 5"},
+    {"slot": 6, "name": "", "url": "", "label": "Preset 6"}
+  ]
+}

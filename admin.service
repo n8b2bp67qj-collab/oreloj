@@ -1,0 +1,16 @@
+[Unit]
+Description=Oreloj Globe Admin
+Documentation=https://github.com/yourusername/oreloj
+After=network.target globe.service
+Wants=network.target
+
+[Service]
+Type=simple
+User=oreloj
+WorkingDirectory=/home/oreloj/globe
+ExecStart=/usr/bin/python3 /home/oreloj/globe/admin.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

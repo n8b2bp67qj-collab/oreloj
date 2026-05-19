@@ -1,0 +1,2614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oreloj</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0e0e0e;
+  --surface: #161616;
+  --surface2: #242424;
+  --border: #2e2e2e;
+  --accent: #e8e8e8;
+  --red: #d42b2b;
+  --red-dim: rgba(212,43,43,0.18);
+  --blue: #2b6dd4;
+  --text: #f0f0f0;
+  --muted: #555;
+  --pop-bg: #141414;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'Space Mono', monospace;
+  height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+}
+
+/* ── Header ── */
+#header {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 20px; border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#logo {
+  font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px;
+  color: var(--text); letter-spacing: -0.5px; white-space: nowrap;
+  text-decoration: underline; text-decoration-style: wavy;
+  text-underline-offset: 4px; text-decoration-color: var(--red);
+}
+#logo span { color: var(--red); }
+
+/* ── Player ── */
+#player {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface); border: 1px dashed var(--border);
+  border-radius: 2px; padding: 7px 12px; flex: 1; max-width: 480px; min-width: 0;
+}
+#pbtn {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--text); border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: transform .1s;
+}
+#pbtn:hover { transform: scale(1.1); }
+#pbtn svg { width: 10px; height: 10px; fill: #000; }
+.pi { flex: 1; min-width: 0; }
+.pn { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pm { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; font-style: italic; }
+.eq { display: flex; align-items: flex-end; gap: 2px; height: 14px; flex-shrink: 0; }
+.eb { width: 3px; background: var(--red); border-radius: 1px; height: 4px; }
+.eq.on .eb { animation: eq .7s ease-in-out infinite alternate; }
+.eq.on .eb:nth-child(2) { animation-delay: .2s; }
+.eq.on .eb:nth-child(3) { animation-delay: .4s; }
+@keyframes eq { to { height: 13px; } }
+.vw { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+.vw svg { width: 12px; height: 12px; fill: var(--muted); }
+#vol { width: 50px; accent-color: var(--red); }
+#addbtn {
+  background: transparent; border: 1px dashed var(--border); color: var(--muted);
+  padding: 7px 12px; border-radius: 2px; font-family: 'Space Mono', monospace;
+  font-size: 10px; cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: all .15s;
+}
+#addbtn:hover { border-color: var(--text); color: var(--text); }
+#exportbtn {
+  background: transparent; border: 1px dashed var(--border); color: var(--muted);
+  padding: 7px 10px; border-radius: 2px; font-family: 'Space Mono', monospace;
+  font-size: 10px; cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: all .15s;
+}
+#exportbtn:hover { border-color: var(--text); color: var(--text); }
+@media (max-width: 550px) { #exportbtn { display: none; } }
+
+/* ── Export modal ── */
+#export-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.8); z-index: 9998; display: none; align-items: center; justify-content: center; }
+#export-overlay.open { display: flex; }
+#export-modal {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 2px;
+  padding: 22px; width: 640px; max-width: 95vw; max-height: 90vh; overflow-y: auto;
+  box-shadow: 6px 6px 0 rgba(0,0,0,0.5);
+}
+#export-modal h2 { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 800; margin-bottom: 4px; color: var(--text); }
+.export-sub { font-size: 10px; color: var(--muted); font-style: italic; margin-bottom: 18px; }
+.export-section { border-top: 1px dashed var(--border); padding-top: 14px; margin-top: 14px; }
+.export-section:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+.export-section h3 { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+.export-section .hint { font-size: 10px; color: var(--muted); font-style: italic; margin-bottom: 8px; }
+.export-snippet {
+  width: 100%; height: 130px; background: var(--surface2);
+  border: 1px solid var(--border); color: var(--text); padding: 8px;
+  font-family: 'Space Mono', monospace; font-size: 10px;
+  resize: vertical; outline: none; line-height: 1.4;
+}
+.export-snippet:focus { border-color: var(--red); }
+.export-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.export-actions button {
+  padding: 6px 12px 8px; border-radius: 1px; font-family: 'Syne', sans-serif;
+  font-weight: 700; font-size: 11px; line-height: 1.4; cursor: pointer; border: none;
+  background: var(--surface2); color: var(--muted); border: 1px dashed var(--border);
+}
+.export-actions button:hover { color: var(--text); border-color: var(--text); }
+.export-actions button.primary { background: var(--text); color: #000; border: none; }
+.export-actions button.danger { color: var(--red); border-color: var(--red); }
+.export-actions button.danger:hover { background: var(--red); color: #fff; }
+.export-toast { font-size: 10px; color: #3ecf6e; font-style: italic; margin-left: 4px; opacity: 0; transition: opacity .2s; align-self: center; }
+.export-toast.show { opacity: 1; }
+#export-close { float: right; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; padding: 0 4px; margin-top: -4px; }
+#export-close:hover { color: var(--text); }
+
+/* ── Pen indicator ── */
+#pen-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: transparent; border: 1px dashed var(--border);
+  color: var(--muted); padding: 5px 9px; border-radius: 2px;
+  font-size: 9px; letter-spacing: .5px; text-transform: uppercase;
+  white-space: nowrap; flex-shrink: 0; cursor: default;
+  transition: color .2s, border-color .2s;
+}
+#pen-pill .pen-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #555; transition: background .2s, box-shadow .2s;
+}
+#pen-pill.active { color: var(--text); border-color: var(--red); }
+#pen-pill.active .pen-dot { background: var(--red); box-shadow: 0 0 6px var(--red); }
+#pen-pill { cursor: pointer; }
+#pen-pill:hover { color: var(--text); }
+
+/* ── Pen-code assignment popup ── */
+#assign-popup {
+  position: fixed; top: 56px; right: 16px; z-index: 200;
+  background: var(--pop-bg); border: 1px solid var(--border);
+  border-radius: 2px; width: 290px;
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.6);
+  display: none; font-family: 'Space Mono', monospace;
+}
+#assign-popup.open { display: block; }
+.assign-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 12px; border-bottom: 1px dashed var(--border);
+  font-size: 9px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted);
+}
+.assign-close {
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 16px; padding: 0 4px; line-height: 1;
+}
+.assign-close:hover { color: var(--text); }
+.assign-body { padding: 12px; }
+.assign-code-display {
+  font-family: 'Syne', sans-serif; font-weight: 800; font-size: 16px;
+  color: var(--text); margin-bottom: 4px; letter-spacing: 1px;
+}
+.assign-current {
+  font-size: 10px; color: var(--muted); font-style: italic; margin-bottom: 12px;
+}
+.assign-current.overridden { color: var(--red); }
+#assign-input, #assign-city {
+  width: 100%; background: var(--surface2); border: none;
+  border-bottom: 1px solid var(--border); color: var(--text);
+  padding: 7px 4px; font-family: 'Space Mono', monospace; font-size: 11px;
+  outline: none; margin-bottom: 8px;
+}
+#assign-input:focus, #assign-city:focus { border-bottom-color: var(--red); }
+#assign-input::placeholder, #assign-city::placeholder { color: var(--muted); font-style: italic; }
+.assign-hint { font-size: 9px; color: var(--muted); font-style: italic; margin-bottom: 10px; min-height: 12px; }
+.assign-hint.ok { color: #3ecf6e; }
+.assign-hint.fail { color: var(--red); }
+.assign-divider { border-top: 1px dashed var(--border); margin: 10px 0; font-size: 9px; color: var(--muted); text-align: center; font-style: italic; }
+.assign-action-row { display: flex; gap: 6px; margin-bottom: 8px; }
+.assign-action-btn {
+  flex: 1; padding: 7px 6px 9px; border-radius: 1px;
+  font-family: 'Syne', sans-serif; font-weight: 700; font-size: 10px; line-height: 1.4;
+  cursor: pointer; background: var(--surface2); color: var(--muted);
+  border: 1px dashed var(--border); transition: all .15s;
+}
+.assign-action-btn:hover { color: var(--text); border-color: var(--text); }
+.assign-action-btn.selected { background: var(--red); color: #fff; border-color: var(--red); }
+.assign-actions { display: flex; gap: 6px; }
+.assign-actions button {
+  flex: 1; padding: 7px 6px 9px; border-radius: 1px;
+  font-family: 'Syne', sans-serif; font-weight: 700; font-size: 11px;
+  line-height: 1.4; cursor: pointer; border: none;
+}
+#assign-clear { background: transparent; border: 1px dashed var(--border); color: var(--muted); display: none; }
+#assign-clear:hover { color: var(--red); border-color: var(--red); }
+#assign-cancel { background: var(--surface2); color: var(--muted); border: 1px dashed var(--border); }
+#assign-save { background: var(--text); color: #000; }
+
+/* ── Layout ── */
+#main { display: flex; flex: 1; overflow: hidden; }
+
+/* ── Sidebar toggle ── */
+#sidebar {
+  width: 230px; flex-shrink: 0; background: var(--surface);
+  border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden;
+  transition: width .25s ease, opacity .25s ease;
+}
+#sidebar.hidden { width: 0; opacity: 0; pointer-events: none; border: none; }
+#toggle-sidebar {
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--muted); cursor: pointer; padding: 5px 9px;
+  font-size: 14px; line-height: 1; border-radius: 2px;
+  flex-shrink: 0; transition: color .15s;
+}
+#toggle-sidebar:hover { color: var(--text); }
+#sw { padding: 10px; border-bottom: 1px solid var(--border); }
+#search {
+  width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--border);
+  color: var(--text); padding: 5px 2px; font-family: 'Space Mono', monospace; font-size: 11px;
+  outline: none; font-style: italic;
+}
+#search:focus { border-bottom-color: var(--red); }
+#search::placeholder { color: var(--muted); }
+#list { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.sc { font-size: 9px; color: var(--muted); padding: 8px 12px; letter-spacing: .8px; text-transform: uppercase; }
+.fav-sep { font-size: 9px; color: var(--red); padding: 8px 12px 3px; letter-spacing: .8px; text-transform: uppercase; }
+.si {
+  padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #1c1c1c;
+  display: flex; align-items: center; gap: 8px; transition: background .1s;
+}
+.si:hover { background: var(--surface2); }
+.si.active { background: #1a0000; border-left: 2px solid var(--red); }
+.si.faved .sd { background: var(--red) !important; opacity: 1 !important; }
+.si.dead .sd { background: var(--blue) !important; opacity: 1 !important; }
+.sd { width: 6px; height: 6px; border-radius: 50%; background: #888; flex-shrink: 0; opacity: .7; }
+.si.active .sd { background: var(--red) !important; opacity: 1; }
+.sinfo { flex: 1; min-width: 0; }
+.sn { font-size: 11px; font-weight: 700; font-family: 'Syne', sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sl { font-size: 10px; color: var(--muted); margin-top: 1px; font-style: italic; }
+.icon-btn { background: none; border: none; cursor: pointer; padding: 0 2px; opacity: .55; color: #888; transition: opacity .15s, color .15s; flex-shrink: 0; line-height: 1; }
+.icon-btn:hover { opacity: 1; color: var(--text); }
+.fheart { font-size: 11px; }
+.fheart.on { opacity: 1; color: var(--red); }
+.edit-icon { font-size: 11px; }
+
+/* ── Globe ── */
+#globe-wrap { flex: 1; position: relative; overflow: hidden; background: var(--bg); }
+#globe-canvas { width: 100%; height: 100%; display: block; cursor: grab; }
+#globe-canvas:active { cursor: grabbing; }
+
+/* ── Popup ── */
+#popup {
+  position: absolute; background: var(--pop-bg);
+  border: 1px solid var(--border);
+  border-radius: 2px; padding: 0; width: 230px;
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.6);
+  display: none; z-index: 100; pointer-events: all;
+  font-family: 'Space Mono', monospace;
+}
+#popup-inner { padding: 13px 14px 14px; }
+.pop-header { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 2px; padding-right: 20px; }
+.pop-name { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 800; color: var(--text); flex: 1; }
+.pop-row { display:flex; align-items:center; gap:6px; margin-bottom: 8px; }
+.pop-loc { font-size: 10px; color: var(--muted); font-style: italic; flex: 1; margin: 0; }
+.pop-icon { background: none; border: none; cursor: pointer; font-size: 13px; padding: 0; line-height: 1; opacity: .55; color: #888; transition: opacity .15s, color .15s; flex-shrink: 0; }
+.pop-icon:hover { opacity: 1; color: var(--text); }
+.pop-icon.on { opacity: 1; color: var(--red); }
+.pop-desc { font-size: 10px; color: #888; line-height: 1.6; margin-bottom: 9px; font-style: italic; }
+.pop-web { font-size: 10px; color: #aaa; text-decoration: none; display: block; margin-bottom: 10px; opacity: .6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: opacity .15s; }
+.pop-web:hover { opacity: 1; color: var(--text); }
+.pop-play {
+  width: 100%; padding: 8px 10px; background: transparent; color: var(--muted);
+  border: 1px solid var(--border); border-radius: 1px;
+  font-family: 'Space Mono', monospace; font-size: 11px; cursor: pointer;
+  transition: color .15s, border-color .15s; text-align: left; letter-spacing: .3px;
+}
+.pop-play:hover { color: var(--text); border-color: var(--text); }
+.pop-play.loading { color: var(--muted); border-color: var(--border); cursor: default; }
+.pop-play.stop { color: var(--red); border-color: var(--red); }
+.pop-play.dead { color: var(--blue); border-color: var(--blue); }
+#popup-close {
+  position: absolute; top: 8px; right: 8px; background: none; border: none;
+  color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1;
+  padding: 2px 4px; transition: color .15s;
+}
+#popup-close:hover { color: var(--text); }
+
+/* ── Modal ── */
+#modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.8); z-index: 9999; display: none; align-items: center; justify-content: center; }
+#modal-overlay.open { display: flex; }
+#modal { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 22px; width: 380px; max-width: 95vw; max-height: 90vh; overflow-y: auto; box-shadow: 6px 6px 0 rgba(0,0,0,0.5); }
+#modal h2 { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 800; margin-bottom: 14px; color: var(--text); }
+.mf { margin-bottom: 10px; }
+.mf label { display: block; font-size: 9px; color: var(--muted); margin-bottom: 3px; text-transform: uppercase; letter-spacing: .5px; }
+.mf input, .mf select, .mf textarea { width: 100%; background: var(--surface2); border: none; border-bottom: 1px solid var(--border); color: var(--text); padding: 6px 2px; font-family: 'Space Mono', monospace; font-size: 11px; outline: none; }
+.mf input:focus, .mf select:focus, .mf textarea:focus { border-bottom-color: var(--red); }
+.mf textarea { resize: vertical; min-height: 50px; }
+.mf select option { background: var(--surface2); }
+.hint { font-size: 9px; color: var(--muted); margin-top: 3px; font-style: italic; }
+.mrow { display: flex; gap: 12px; }
+.mrow .mf { flex: 1; }
+.mbtns { display: flex; gap: 8px; margin-top: 16px; }
+.mbtns button { flex: 1; padding: 9px 9px 12px; border-radius: 1px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12px; line-height: 1.4; cursor: pointer; border: none; }
+#mcancel { background: var(--surface2); color: var(--muted); border: 1px dashed var(--border); }
+#msave { background: var(--text); color: #000; }
+#mdelete { background: transparent; color: var(--red); border: 1px dashed var(--red); display: none; }
+#merr { font-size: 10px; color: var(--red); margin-top: 6px; display: none; font-style: italic; }
+#mgeo { font-size: 10px; color: var(--muted); margin-top: 4px; font-style: italic; }
+#mgeo.ok { color: #3ecf6e; }
+#mgeo.fail { color: var(--red); }
+.rbs { padding: 7px 0; border-bottom: 1px solid var(--border); cursor: pointer; transition: padding .1s; }
+.rbs:hover { padding-left: 6px; }
+.rbn { font-size: 11px; font-weight: 700; font-family: 'Syne', sans-serif; }
+.rbm { font-size: 10px; color: var(--muted); }
+#rblist { margin-top: 8px; max-height: 150px; overflow-y: auto; }
+#rbgo { width: 100%; padding: 7px; background: transparent; border: 1px dashed var(--border); color: var(--muted); border-radius: 1px; font-family: 'Space Mono', monospace; font-size: 11px; cursor: pointer; margin-top: 5px; }
+#rbgo:hover { border-color: var(--text); color: var(--text); }
+
+audio { display: none; }
+
+#version-tag {
+  position: fixed; bottom: 6px; right: 8px;
+  font-family: 'Space Mono', monospace; font-size: 8px;
+  color: var(--muted); opacity: .55; letter-spacing: .5px;
+  pointer-events: none; z-index: 50; text-transform: uppercase;
+}
+
+@media (max-width: 550px) {
+  #header { padding: 8px 10px; gap: 8px; flex-wrap: wrap; }
+  #logo { font-size: 14px; }
+  #player { padding: 6px 8px; gap: 6px; flex: 1; min-width: 0; }
+  .vw { display: none; }
+  .pm { display: none; }
+  #addbtn { display: none; }
+  #pen-pill { display: none; }
+  #mobile-add { display: flex; }
+}
+#mobile-add {
+  display: none; position: fixed; bottom: 18px; right: 18px; z-index: 200;
+  background: var(--surface); border: 1px dashed var(--border);
+  color: var(--muted); padding: 10px 14px; border-radius: 2px;
+  font-family: 'Space Mono', monospace; font-size: 11px; cursor: pointer;
+  box-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+}
+
+/* ── Sidebar scroll wrapper ── */
+#sidebar-scroll { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent; display: flex; flex-direction: column; }
+/* Override old #list flex:1 so it doesn't swallow everything */
+#list { flex: 0 0 auto; }
+
+/* ── Sidebar collapsible sections (zones, presets) ── */
+.sb-section-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; cursor: pointer;
+  border-top: 1px solid var(--border);
+  font-size: 9px; letter-spacing: .8px; text-transform: uppercase;
+  color: var(--muted); user-select: none; transition: color .15s;
+}
+.sb-section-hdr:hover { color: var(--text); }
+.sb-section-arrow { font-size: 8px; transition: transform .15s; }
+.sb-section-body { }
+
+/* Zone rows */
+.zone-row {
+  padding: 7px 12px 7px 10px; border-bottom: 1px solid #1c1c1c;
+  display: flex; align-items: center; gap: 7px; font-size: 10px;
+}
+.zone-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.zone-dot.volume   { background: #2b6dd4; }
+.zone-dot.preset   { background: #d48e2b; }
+.zone-dot.favourite{ background: var(--red); }
+.zone-dot.random   { background: #3ecf6e; }
+.zone-dot.stop     { background: #555; }
+.zone-label  { flex: 1; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.zone-action { font-size: 9px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+.zone-code   { font-size: 8px; color: #3a3a3a; font-style: italic; flex-shrink: 0; }
+.tbd-badge   { font-size: 8px; color: #444; border: 1px dashed #333; padding: 1px 4px; border-radius: 1px; flex-shrink: 0; }
+.zone-edit-btn { background: none; border: none; cursor: pointer; font-size: 10px; color: #444; padding: 0 2px; line-height: 1; transition: color .15s; flex-shrink: 0; }
+.zone-edit-btn:hover { color: var(--text); }
+
+/* Preset rows */
+.preset-row {
+  padding: 7px 12px 7px 10px; border-bottom: 1px solid #1c1c1c;
+  display: flex; align-items: center; gap: 7px; font-size: 10px;
+}
+.preset-slot  { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 11px; color: var(--muted); min-width: 14px; flex-shrink: 0; }
+.preset-info  { flex: 1; min-width: 0; }
+.preset-lbl   { font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.preset-name  { font-size: 9px; color: var(--muted); font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.preset-empty { color: #3a3a3a; font-style: italic; }
+.preset-edit-btn { background: none; border: none; cursor: pointer; font-size: 10px; color: #444; padding: 0 2px; line-height: 1; transition: color .15s; flex-shrink: 0; }
+.preset-edit-btn:hover { color: var(--text); }
+
+/* Preset edit modal */
+#preset-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.8); z-index: 9999; display: none; align-items: center; justify-content: center; }
+#preset-modal-overlay.open { display: flex; }
+#preset-modal {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 2px;
+  padding: 20px; width: 340px; max-width: 95vw;
+  box-shadow: 6px 6px 0 rgba(0,0,0,0.5); font-family: 'Space Mono', monospace;
+}
+#preset-modal h2 { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 800; margin-bottom: 14px; color: var(--text); }
+.pmf { margin-bottom: 10px; }
+.pmf label { display: block; font-size: 9px; color: var(--muted); margin-bottom: 3px; text-transform: uppercase; letter-spacing: .5px; }
+.pmf input { width: 100%; background: var(--surface2); border: none; border-bottom: 1px solid var(--border); color: var(--text); padding: 6px 2px; font-family: 'Space Mono', monospace; font-size: 11px; outline: none; }
+.pmf input:focus { border-bottom-color: var(--red); }
+.pmf input::placeholder { color: var(--muted); font-style: italic; }
+#pm-rb-list { margin-top: 6px; max-height: 120px; overflow-y: auto; }
+.pm-rb-item { padding: 6px 0; border-bottom: 1px solid var(--border); cursor: pointer; transition: padding .1s; }
+.pm-rb-item:hover { padding-left: 6px; }
+.pm-rb-item .rbn { font-size: 11px; font-weight: 700; font-family: 'Syne', sans-serif; }
+.pm-rb-item .rbm { font-size: 10px; color: var(--muted); }
+#pm-rb-go { width: 100%; padding: 6px; background: transparent; border: 1px dashed var(--border); color: var(--muted); border-radius: 1px; font-family: 'Space Mono', monospace; font-size: 11px; cursor: pointer; margin-top: 4px; }
+#pm-rb-go:hover { border-color: var(--text); color: var(--text); }
+.pmbtns { display: flex; gap: 8px; margin-top: 14px; }
+.pmbtns button { flex: 1; padding: 8px 9px 11px; border-radius: 1px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 11px; line-height: 1.4; cursor: pointer; border: none; }
+#pm-cancel { background: var(--surface2); color: var(--muted); border: 1px dashed var(--border); }
+#pm-save   { background: var(--text); color: #000; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <button id="toggle-sidebar" onclick="toggleSidebar()" title="Toggle panel">☰</button>
+  <div id="logo">ORELOJ</div>
+  <div id="player">
+    <button id="pbtn" onclick="togglePlay()">
+      <svg id="picon" viewBox="0 0 10 12"><polygon points="0,0 10,6 0,12"/></svg>
+    </button>
+    <div class="pi">
+      <div class="pn" id="pname">Select a station</div>
+      <div class="pm" id="pmeta">spin the globe, click a dot</div>
+    </div>
+    <div class="eq" id="eq"><div class="eb"></div><div class="eb"></div><div class="eb"></div></div>
+    <div class="vw">
+      <svg viewBox="0 0 14 12"><path d="M0 4h3l4-4v12l-4-4H0zM10 2a6 6 0 010 8M8 3.5a3.5 3.5 0 010 5"/></svg>
+      <input type="range" id="vol" min="0" max="1" step=".01" value=".8" oninput="onVolume(this.value)">
+    </div>
+  </div>
+  <div id="pen-pill" title="SmartGlobe pen ready — tap a country">
+    <span class="pen-dot"></span><span>pen</span>
+  </div>
+  <button id="exportbtn" onclick="openExport()" title="Export pen mappings + radio stations">⤓ data</button>
+  <button id="addbtn" onclick="openModal()">+ add radio</button>
+</div>
+<button id="mobile-add" onclick="openModal()">+ add radio</button>
+
+<div id="main">
+  <div id="sidebar">
+    <div id="sw"><input type="text" id="search" placeholder="search stations…" oninput="renderList()"></div>
+    <div id="sidebar-scroll">
+      <div id="list"></div>
+
+      <!-- ── Zones section ── -->
+      <div id="zones-section">
+        <div class="sb-section-hdr" onclick="toggleSbSection('zones')">
+          <span>● zones</span>
+          <span class="sb-section-arrow" id="zones-arrow">▸</span>
+        </div>
+        <div class="sb-section-body" id="zones-body" style="display:none">
+          <div id="zones-list"><p class="sc">Loading…</p></div>
+        </div>
+      </div>
+
+      <!-- ── Presets section ── -->
+      <div id="presets-section">
+        <div class="sb-section-hdr" onclick="toggleSbSection('presets')">
+          <span>● presets</span>
+          <span class="sb-section-arrow" id="presets-arrow">▸</span>
+        </div>
+        <div class="sb-section-body" id="presets-body" style="display:none">
+          <div id="presets-list"><p class="sc">Loading…</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="globe-wrap">
+    <canvas id="globe-canvas"></canvas>
+    <div id="popup">
+      <button id="popup-close" onclick="closePopup()">×</button>
+      <div id="popup-inner"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Add/edit radio modal -->
+<div id="modal-overlay">
+  <div id="modal">
+    <h2 id="mtitle">+ add your radio</h2>
+    <div class="mf">
+      <label>Search Radio Browser (30 000+ stations)</label>
+      <input type="text" id="rbq" placeholder="Station name…" onkeydown="if(event.key==='Enter')searchRB()">
+      <button id="rbgo" onclick="searchRB()">Search →</button>
+      <div id="rblist"></div>
+    </div>
+    <div style="border-top:1px dashed var(--border);margin:12px 0;font-size:10px;color:var(--muted);text-align:center;font-style:italic">— or fill in manually —</div>
+    <div class="mf"><label>Name *</label><input type="text" id="mname" placeholder="Station name"></div>
+    <div class="mrow">
+      <div class="mf"><label>City</label><input type="text" id="mcity" oninput="scheduleGeocode()"></div>
+      <div class="mf"><label>Country</label><input type="text" id="mcountry" oninput="scheduleGeocode()"></div>
+    </div>
+    <div id="mgeo">📍 location auto-detected from city + country</div>
+    <div class="mf"><label>Description</label><textarea id="mdesc" placeholder="Short description…"></textarea></div>
+    <div class="mf">
+      <label>Stream URL *</label>
+      <input type="text" id="mstream" placeholder="https://…stream….mp3">
+      <div class="hint">Direct .mp3 / .aac / .ogg stream link</div>
+    </div>
+    <div class="mf"><label>Website</label><input type="text" id="mweb" placeholder="https://…"></div>
+    <div id="merr">Please provide at least a name and a stream URL.</div>
+    <div class="mbtns">
+      <button id="mcancel" onclick="closeModal()">Cancel</button>
+      <button id="mdelete" onclick="deleteCurrentEdit()">Delete</button>
+      <button id="msave" onclick="saveStation()">Add station</button>
+    </div>
+  </div>
+</div>
+
+<audio id="audio-el"></audio>
+
+<!-- Export modal -->
+<div id="export-overlay">
+  <div id="export-modal">
+    <button id="export-close" onclick="closeExport()" title="Close">×</button>
+    <h2>⤓ export data</h2>
+    <p class="export-sub">Paste these snippets back to Claude (or directly into <code>index.html</code>) to bake your changes into the deployed app for everyone.</p>
+
+    <div class="export-section">
+      <h3>Pen code mappings <span id="pen-count" style="color:var(--muted);font-weight:400;font-size:11px"></span></h3>
+      <p class="hint">Your manual overrides on top of the built-in pen→country map. Paste these into the <code>PEN_CODE_MAP</code> object in index.html (same format).</p>
+      <textarea readonly id="pen-js-snippet" class="export-snippet" spellcheck="false"></textarea>
+      <div class="export-actions">
+        <button class="primary" onclick="copyExport('pen-js-snippet', this)">Copy JS</button>
+        <button onclick="downloadPenCsv()">Download CSV</button>
+        <button class="danger" onclick="clearPenOverrides()">Clear my overrides</button>
+        <span class="export-toast" id="pen-toast">copied</span>
+      </div>
+    </div>
+
+    <div class="export-section">
+      <h3>Radio stations <span id="radio-count" style="color:var(--muted);font-weight:400;font-size:11px"></span></h3>
+      <p class="hint">Full station list (built-ins + your overrides + custom adds, hidden ones excluded). Paste this to replace the <code>BUILT_IN</code> array — your custom stations are baked in too, so you can clear localStorage afterwards.</p>
+      <textarea readonly id="radio-js-snippet" class="export-snippet" spellcheck="false"></textarea>
+      <div class="export-actions">
+        <button class="primary" onclick="copyExport('radio-js-snippet', this)">Copy JS</button>
+        <button onclick="downloadRadioCsv()">Download CSV</button>
+        <span class="export-toast" id="radio-toast">copied</span>
+      </div>
+    </div>
+
+    <div class="export-section">
+      <h3>Action zones <span id="action-count" style="color:var(--muted);font-weight:400;font-size:11px"></span></h3>
+      <p class="hint">Ocean zone → Pi action mappings. Save this as <code>actions.json</code> in <code>~/globe/</code> on the Pi. Globe.py loads it at startup.</p>
+      <textarea readonly id="action-js-snippet" class="export-snippet" spellcheck="false" style="height:80px"></textarea>
+      <div class="export-actions">
+        <button class="primary" onclick="copyExport('action-js-snippet', this)">Copy JSON</button>
+        <button onclick="downloadActionJson()">Download actions.json</button>
+        <button class="danger" onclick="clearActionMappings()">Clear actions</button>
+        <span class="export-toast" id="action-toast">copied</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Preset edit modal -->
+<div id="preset-modal-overlay">
+  <div id="preset-modal">
+    <h2 id="pm-title">Edit Preset</h2>
+    <div class="pmf">
+      <label>Label</label>
+      <input type="text" id="pm-label" placeholder="Preset 1">
+    </div>
+    <div class="pmf">
+      <label>Search Radio Browser</label>
+      <input type="text" id="pm-rbq" placeholder="Station name…" onkeydown="if(event.key==='Enter')pmSearchRB()">
+      <button id="pm-rb-go" onclick="pmSearchRB()">Search →</button>
+      <div id="pm-rb-list"></div>
+    </div>
+    <div style="border-top:1px dashed var(--border);margin:10px 0;font-size:9px;color:var(--muted);text-align:center;font-style:italic">— or fill in manually —</div>
+    <div class="pmf">
+      <label>Station Name</label>
+      <input type="text" id="pm-name" placeholder="e.g. FIP">
+    </div>
+    <div class="pmf">
+      <label>Stream URL</label>
+      <input type="text" id="pm-url" placeholder="https://…">
+    </div>
+    <div class="pmbtns">
+      <button id="pm-cancel" onclick="closePmModal()">Cancel</button>
+      <button id="pm-save" onclick="savePmModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Pen-code → country assignment popup -->
+<div id="assign-popup">
+  <div class="assign-head">
+    <span>📍 pen code mapping</span>
+    <button class="assign-close" onclick="closeAssign()" title="Close">×</button>
+  </div>
+  <div class="assign-body">
+    <div class="assign-code-display" id="assign-code-display">—</div>
+    <div class="assign-current" id="assign-current">—</div>
+    <input list="country-list" id="assign-input" placeholder="country (type to search)" autocomplete="off" onkeydown="if(event.key==='Enter')saveAssign()">
+    <datalist id="country-list"></datalist>
+    <input type="text" id="assign-city" placeholder="city (optional, for narrower targeting)" autocomplete="off" onkeydown="if(event.key==='Enter')saveAssign()">
+    <div class="assign-hint" id="assign-hint"></div>
+    <div class="assign-divider">— or assign as action —</div>
+    <div class="assign-action-row">
+      <button class="assign-action-btn" id="action-btn-favourite_toggle" onclick="selectAction('favourite_toggle')">♥ favourite toggle</button>
+      <button class="assign-action-btn" id="action-btn-stop" onclick="selectAction('stop')">■ stop</button>
+    </div>
+    <div class="assign-actions">
+      <button id="assign-clear" onclick="clearAssign()" title="Remove your override (revert to built-in)">Reset</button>
+      <button id="assign-cancel" onclick="closeAssign()">Cancel</button>
+      <button id="assign-save" onclick="saveAssign()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="version-tag">v0.5 · alpha</div>
+
+<script src="https://unpkg.com/d3@7/dist/d3.min.js"></script>
+<script src="https://unpkg.com/topojson-client@3/dist/topojson-client.min.js"></script>
+<script>
+// ── Pi API helpers ────────────────────────────────────────────────────────
+// PI_BASE is '' when running on the Pi itself (oreloj.local), otherwise
+// points cross-origin at the Pi's admin server.
+const PI_BASE = (location.hostname === 'oreloj.local' || location.hostname === 'localhost')
+  ? '' : 'http://oreloj.local:5000';
+
+async function piGet(path) {
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 2000);
+    const r = await fetch(PI_BASE + path, { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch (e) { return null; }
+}
+
+async function piPost(path, body) {
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 2000);
+    await fetch(PI_BASE + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+    clearTimeout(timer);
+  } catch (e) { /* best-effort, silent fail */ }
+}
+
+// ── Stations ──────────────────────────────────────────────────────────────
+const BUILT_IN = [
+  // Europe
+  {name:"NTS Radio",city:"London",country:"UK",lat:51.52,lng:-0.09,web:"https://nts.live",stream:"https://stream-relay-geo.ntslive.net/stream",desc:"London's cult independent broadcaster. Eclectic, adventurous, anti-algorithm."},
+  {name:"Rinse FM",city:"London",country:"UK",lat:51.53,lng:-0.08,web:"https://rinse.fm",desc:"Grime, garage, house and UK bass. Heartbeat of London's underground since 1994."},
+  {name:"Worldwide FM",city:"London",country:"UK",lat:51.5,lng:-0.12,web:"https://worldwidefm.net",stream:"https://worldwide-fm.radiocult.fm/stream",desc:"Global grooves curated by Gilles Peterson. Jazz, soul, afrobeat and everything between."},
+  {name:"Noods Radio",city:"Bristol",country:"UK",lat:51.45,lng:-2.6,web:"https://noodsradio.com",desc:"Bristol's fiercely independent station. Community-first and boundary-pushing since 2018."},
+  {name:"Resonance Extra",city:"London",country:"UK",lat:51.5,lng:-0.09,web:"https://resonancefm.com",stream:"https://stream.resonance.fm/resonance-extra",desc:"Arts radio broadcasting experimental and avant-garde programming since 2002."},
+  {name:"1BTN",city:"Brighton",country:"UK",lat:50.82,lng:-0.14,web:"https://1btn.fm",desc:"Brighton's underground community station. Multi-genre, zero commercial pressure."},
+  {name:"Pound & Yam",city:"London",country:"UK",lat:51.55,lng:-0.07,web:"https://poundandyam.com",desc:"Black-owned independent radio from Dalston. Eclectic genres, underrepresented voices."},
+  {name:"Voices Radio",city:"London",country:"UK",lat:51.54,lng:-0.12,web:"https://voicesradio.co.uk",desc:"Broadcasting from Coal Drops Yard, King's Cross. Social issues, diversity and music."},
+  {name:"Soho Radio",city:"London",country:"UK",lat:51.51,lng:-0.13,web:"https://sohoradio.com",desc:"Broadcasting from the heart of Soho since 2015. Eclectic music from London's most creative neighbourhood."},
+  {name:"Aaja Music",city:"London",country:"UK",lat:51.52,lng:-0.08,web:"https://aaja.app",desc:"London music bar turned streaming space. Intimate live sets broadcast to the world."},
+  {name:"Netil Radio",city:"London",country:"UK",lat:51.54,lng:-0.06,web:"https://netilradio.com",desc:"Community radio from a shipping container in London Fields, Hackney."},
+  {name:"Do!! You!!! Radio",city:"London",country:"UK",lat:51.53,lng:-0.1,web:"https://doyouworld.com",desc:"London community radio where music discovery comes first. Pure love of music."},
+  {name:"Subcity Radio",city:"Glasgow",country:"UK",lat:55.87,lng:-4.28,web:"https://subcity.org",desc:"Independent station from the University of Glasgow. Student-run and fiercely non-commercial since 1996."},
+  {name:"Dublin Digital Radio",city:"Dublin",country:"Ireland",lat:53.34,lng:-6.27,web:"https://www.dublindigitalradio.com",desc:"Ireland's independent underground station. Arts, music and community from the Irish capital."},
+  {name:"FIP",city:"Paris",country:"France",lat:48.87,lng:2.35,web:"https://radiofrance.fr/fip",stream:"https://icecast.radiofrance.fr/fip-midfi.mp3",desc:"France's most eclectic radio. Jazz, soul, world — no genre barriers, no ads. An institution."},
+  {name:"Radio Nova",city:"Paris",country:"France",lat:48.85,lng:2.32,web:"https://nova.fr",stream:"https://novazz.ice.infomaniak.ch/novazz-128.mp3",desc:"World beats, funk, soul and creative music. Shaping French culture since 1981."},
+  {name:"Pinata Radio",city:"Montpellier",country:"France",lat:43.61,lng:3.87,web:"https://pinataradio.com",desc:"Montpellier's colourful independent radio. Eclectic electronic music and festive vibes from the South."},
+  {name:"LYL Radio",city:"Lyon",country:"France",lat:45.75,lng:4.85,web:"https://lyl.live",stream:"https://icecast.lyl.live/live",desc:"Lyon's cult independent station. Disco, experimental, techno and world — live since 2018."},
+  {name:"RTL3",city:"Grenoble",country:"France",lat:45.188,lng:5.724,web:"https://rtl3.fr",stream:"https://rtl3.radiocult.fm/stream",desc:"Radio indépendante au Couvent des Minimes, Grenoble. Musiques électroniques et scène locale alpine."},
+  {name:"Le Mellotron",city:"Paris",country:"France",lat:48.87,lng:2.36,web:"https://lemellotron.com",desc:"Parisian global music radio since 2007. Soul, jazz, funk, world — always exigeant."},
+  {name:"Radio Meuh",city:"Annecy",country:"France",lat:45.9,lng:6.12,web:"https://radiomeuh.com",desc:"Electronic, soul and funk from the French Alps. Independent and joyful since 2001."},
+  {name:"Radio DY10",city:"Nantes",country:"France",lat:47.22,lng:-1.55,web:"https://radiody10.com",desc:"Nantes-based station. Balearic, tropical sounds, dance music and trippy electronic."},
+  {name:"Let Him Cook",city:"Paris",country:"France",lat:48.86,lng:2.33,web:"https://lethimcook.radio",desc:"Artists mix live inside a real restaurant kitchen. Music fused with working service energy."},
+  {name:"Radio Grenouille",city:"Marseille",country:"France",lat:43.3,lng:5.38,web:"https://radiogrenouille.com",desc:"Marseille's eclectic free radio since 1981. World music, jazz and Mediterranean culture."},
+  {name:"Cinemix",city:"Paris",country:"France",lat:48.88,lng:2.34,web:"https://cinemix.us",desc:"Radio dedicated to film and TV soundtracks. Future classics and golden-era scores."},
+  {name:"Kiosk Radio",city:"Brussels",country:"Belgium",lat:50.85,lng:4.36,web:"https://kioskradio.com",desc:"Brussels' eclectic broadcast from the Bozar kiosk. Community, arts and rare sounds."},
+  {name:"Radio Centraal",city:"Antwerp",country:"Belgium",lat:51.22,lng:4.4,web:"https://radiocentraal.be",desc:"Community radio from Antwerp since 1980. One of Belgium's oldest independent stations."},
+  {name:"Red Light Radio",city:"Amsterdam",country:"Netherlands",lat:52.37,lng:4.9,web:"https://redlightradio.net",desc:"Amsterdam's underground electronic station. Live sets from the city's best DJs, every day."},
+  {name:"Intergalactic FM",city:"Tilburg",country:"Netherlands",lat:51.56,lng:5.09,web:"https://intergalactic.fm",desc:"Electro, techno and cosmic sounds. No compromises, pure machine music."},
+  {name:"Cashmere Radio",city:"Berlin",country:"Germany",lat:52.49,lng:13.45,web:"https://cashmereradio.com",desc:"Berlin experimental community radio. Art, discourse and left-field sounds since 2015."},
+  {name:"90mil Radio",city:"Berlin",country:"Germany",lat:52.51,lng:13.4,web:"https://radio.90mil.berlin",stream:"https://neunzugmilradio.out.airtime.pro/neunzugmilradio_a",desc:"Independent platform amplifying underrepresented voices in Berlin's sonic landscape. Supporting femme and queer artists, storytellers and activists through experimental arts and sound."},
+  {name:"Radio 80000",city:"Munich",country:"Germany",lat:48.14,lng:11.58,web:"https://80000.de",desc:"Munich's independent underground station. Electronic music and club culture from Bavaria."},
+  {name:"Reboot FM",city:"Berlin",country:"Germany",lat:52.5,lng:13.41,web:"https://reboot.fm",desc:"Free artist radio from Berlin. Art, discourse and electronic music since 2005."},
+  {name:"Refuge Worldwide",city:"Berlin",country:"Germany",lat:52.47,lng:13.44,web:"https://refugeworldwide.com",desc:"Community radio from Berlin-Neukölln in solidarity with grassroots organisations."},
+  {name:"Radio Corax",city:"Halle",country:"Germany",lat:51.48,lng:11.97,web:"https://radiocorax.de",desc:"Free non-commercial radio from Halle. 300 volunteer contributors."},
+  {name:"Rádio Quântica",city:"Lisbon",country:"Portugal",lat:38.72,lng:-9.14,web:"https://radioquantica.com",desc:"Lisbon's community radio since 2015. Safe haven for underground artists and activists."},
+  {name:"Radio Raheem",city:"Milan",country:"Italy",lat:45.46,lng:9.19,web:"https://radioraheem.it",desc:"Milan's cosmopolitan independent radio. A richly curated journey across all genres."},
+  {name:"NEU Radio",city:"Bologna",country:"Italy",lat:44.49,lng:11.34,web:"https://neu.radio",desc:"Bologna's cultural hub radio. Afrobeats to indie rock, always with an Italian edge."},
+  {name:"Radio Kapitał",city:"Warsaw",country:"Poland",lat:52.23,lng:21.01,web:"https://radiokapital.pl",desc:"Warsaw's experimental community radio. Avant-garde and Polish underground since 2019."},
+  {name:"Radio Punctum",city:"Prague",country:"Czechia",lat:50.08,lng:14.44,web:"https://radiopunctum.cz",desc:"Prague-based community radio. Experimental music and independent Czech voices."},
+  {name:"The Lake Radio",city:"Copenhagen",country:"Denmark",lat:55.68,lng:12.57,web:"https://thelakeradio.com",desc:"Copenhagen's independent station. Carefully programmed music and cultural programming."},
+  {name:"Retreat Radio",city:"Malmö",country:"Sweden",lat:55.6,lng:13.0,web:"https://retreatradio.com",desc:"Malmö's independent electronic station. A retreat from mainstream broadcasting."},
+  {name:"IDA Radio",city:"Tallinn",country:"Estonia",lat:59.44,lng:24.75,web:"https://idaradio.com",desc:"Tallinn-via-Helsinki community radio. Underground music from the Baltics."},
+  {name:"20ft Radio",city:"Kyiv",country:"Ukraine",lat:50.45,lng:30.52,web:"https://20ftradio.com",desc:"Kyiv's underground music station. Resilient cultural broadcasting from Ukraine."},
+  // Asia
+  {name:"Mutant Radio",city:"Tbilisi",country:"Georgia",lat:41.69,lng:44.83,web:"https://mutantradio.net",desc:"Tbilisi's independent experimental station. Underground music from the Caucasus."},
+  // Europe
+  {name:"Movement Radio",city:"Athens",country:"Greece",lat:37.98,lng:23.73,web:"https://movementradio.gr",desc:"Athens' independent underground radio. Electronic music and counterculture."},
+  // Asia
+  {name:"Radio Alhara",city:"Bethlehem",country:"Palestine",lat:31.7,lng:35.2,web:"https://radioalhara.net",desc:"Neighbourhood radio from Palestine. Diaspora voices, Arabic music and community spirit."},
+  // Africa
+  {name:"Oroko Radio",city:"Accra",country:"Ghana",lat:5.56,lng:-0.2,web:"https://oroko.live",desc:"Not-for-profit community radio from Accra. Connecting African and diasporic voices globally."},
+  // Asia
+  {name:"Boxout FM",city:"New Delhi",country:"India",lat:28.64,lng:77.22,web:"https://boxout.fm",desc:"India's first underground music radio. Promoting South Asian club culture globally since 2017."},
+  {name:"Seoul Community Radio",city:"Seoul",country:"South Korea",lat:37.57,lng:126.97,web:"https://seoulcommunityradio.com",desc:"Seoul's independent underground station. K-indie, electronic and authentic Korean culture."},
+  {name:"Inter FM 897",city:"Tokyo",country:"Japan",lat:35.68,lng:139.69,web:"https://interfm.co.jp",desc:"Tokyo's international music radio. A global perspective from Japan's capital."},
+  // Oceania
+  {name:"Triple J",city:"Sydney",country:"Australia",lat:-33.87,lng:151.21,web:"https://abc.net.au/triplej",desc:"Australia's national youth broadcaster. Australian artists and alternative music."},
+  {name:"FBi Radio",city:"Sydney",country:"Australia",lat:-33.88,lng:151.2,web:"https://fbiradio.com",desc:"Sydney's independent community station. Arts-driven and deeply local."},
+  {name:"Skylab Radio",city:"Melbourne",country:"Australia",lat:-37.81,lng:144.96,web:"https://skylabradio.com.au",desc:"Melbourne community radio for experimental and electronic music."},
+  {name:"RNZ Concert",city:"Wellington",country:"New Zealand",lat:-41.29,lng:174.78,web:"https://rnz.co.nz/concert",desc:"New Zealand's classical and arts broadcaster. Elegant programming from the Pacific."},
+  // North America
+  {name:"The Lot Radio",city:"New York",country:"USA",lat:40.72,lng:-74.01,web:"https://thelotradio.com",desc:"Brooklyn's outdoor broadcast from a parking lot. Diverse and adventurous programming."},
+  {name:"KEXP",city:"Seattle",country:"USA",lat:47.62,lng:-122.35,web:"https://kexp.org",stream:"https://kexp-mp3-128.streamguys1.com/kexp128.mp3",desc:"Seattle's legendary independent music radio. Home to the best live sessions online."},
+  {name:"Dublab",city:"Los Angeles",country:"USA",lat:34.05,lng:-118.24,web:"https://dublab.com",desc:"Future roots music from LA. Organic, exploratory and non-commercial since 1999."},
+  {name:"SOMA FM",city:"San Francisco",country:"USA",lat:37.78,lng:-122.42,web:"https://somafm.com",stream:"https://ice1.somafm.com/groovesalad-128-mp3",desc:"Listener-supported commercial-free streams. Multiple channels of hand-curated electronica."},
+  {name:"Radio Free Brooklyn",city:"New York",country:"USA",lat:40.71,lng:-73.94,web:"https://radioFreebrooklyn.com",desc:"Non-profit community station from Brooklyn since 2015. Underground bands, indie artists."},
+  {name:"X-Ray FM",city:"Portland",country:"USA",lat:45.52,lng:-122.67,web:"https://xray.fm",desc:"Portland's community radio curated by locals — journalists, comedians, musicians."},
+  {name:"Newtown Radio",city:"New York",country:"USA",lat:40.71,lng:-73.93,web:"https://newtownradio.com",desc:"Brooklyn community radio from a neighbourhood record shop. Local artists, global music."},
+  {name:"8 Ball Radio",city:"New York",country:"USA",lat:40.73,lng:-73.99,web:"https://8ballradio.nyc",desc:"NYC artist collective broadcasting electronic music and leftfield culture 24/7."},
+  {name:"Radio Paradise",city:"Paradise",country:"USA",lat:39.76,lng:-121.6,web:"https://radioparadise.com",stream:"https://stream.radioparadise.com/aac-320",desc:"Eclectic freeform radio mixing rock, world and indie. Listener-supported since 2000."},
+  {name:"CKUT",city:"Montreal",country:"Canada",lat:45.5,lng:-73.58,web:"https://ckut.ca",desc:"McGill University's non-commercial community radio. Multilingual and radically open."},
+  // South America
+  {name:"Rádio Batuta",city:"Rio de Janeiro",country:"Brazil",lat:-22.9,lng:-43.18,web:"https://radiobatuta.com.br",desc:"Brazilian cultural radio. MPB, jazz and samba with deep care."},
+  {name:"Vorterix",city:"Buenos Aires",country:"Argentina",lat:-34.61,lng:-58.37,web:"https://vorterix.com",desc:"Buenos Aires' leading rock and alternative station. Voice of Argentine underground culture."},
+  // Global
+  {name:"Poolsuite FM",city:"Online",country:"Global",lat:21.3,lng:-157.8,web:"https://poolsuite.net",desc:"The internet's most stylish leisure radio. Summer-eternal vibes and vintage poolside grooves."},
+  // Other
+  {name:"Bangkok Community Radio",city:"Unknown",country:"Unknown",lat:13.75,lng:100.52,web:"https://www.bangkokcommunityradio.com/",stream:"https://bcr.radiocult.fm/stream",desc:"Bangkok Community Radio"},
+  {name:"Radio Rumba",city:"Guayaquil",country:"Ecuador",lat:-2.18,lng:-79.88,web:"http://radiorumba.fm/",stream:"https://streamingecuador.net:8078/radiorumbanetwork",desc:"Rumba Rumba Rumba"},
+  // South America
+  {name:"FM La Tribu 88.5 Buenos Aires",city:"buenos aires",country:"Argentina",lat:-34.61,lng:-58.37,web:"http://www.fmlatribu.com.ar/",stream:"https://icecast.zeclogiccloud.com.de/fmlatribu",desc:"Espacio Cultural Bar Antro LGTBIQ+ refugio Antifascista en Buenos Aires"},
+  // Other
+  {name:"Nasarawa Broadcasting Service",city:"Lafia",country:"Nigeria",lat:8.49,lng:8.52,web:"https://www.radio-nigeria.com/nasarawa-broadcasting-service-lafia-nbs",stream:"https://nbsradio1.radioca.st/;",desc:"???"},
+  // South America
+  {name:"Radio Oncativo",city:"Oncativo",country:"Argentina",lat:-31.92,lng:-63.68,stream:"https://01.solumedia.com.ar:9058/stream",desc:"User-added station."},
+  // Europe
+  {name:"Radio Relativa",city:"Madrid",country:"Spain",lat:40.42,lng:-3.7,web:"https://radiorelativa.eu/",stream:"https://streamer.radio.co/sd6131729c/listen",desc:"Since 2018. Radio Relativa is a community, independent, and experimental platform dedicated to promoting and connecting diverse artists and cultural initiatives from Madrid to the world."},
+  // South America
+  {name:"Radio Caso",city:"Buenos Aires",country:"Argentina",lat:-34.61,lng:-58.37,web:"https://www.radiocaso.xyz/agenda",stream:"https://stream.radiojar.com/34efk49zvncwv",desc:"Radio CASo es una plataforma de investigación y experimentación a través del sonido y la escucha, basada en Buenos Aires, Argentina. Fue fundada en el 2020 entre los programas culturales del Centro de Arte Sonoro y hoy continua su actividad de manera independiente."},
+  {name:"Mutante Rádio",city:"Sao Paulo",country:"Brazil",lat:-23.55,lng:-46.63,web:"https://www.mutanteradio.com/",stream:"https://s30.maxcast.com.br:8190/live?id=536069974467",desc:"A Casa do Underground!"},
+  // Other
+  {name:"Radio Kurruf",city:"Temuco",country:"Chile",lat:-38.74,lng:-72.6,web:"https://radiokurruf.org/",stream:"https://radio.latina.red/radiokurruf.mp3",desc:"From 2015 Radio Kvrruf es un medio de comunicación social, comunitario, libre y autónomo, difundimos información a través plataformas digitales y redes sociales, cubriendo hechos y situaciones asociadas a reivindicaciones sociales, defensa del territorio y la vida, promoción y defensa de los Derechos Humanos, y la búsqueda del buen vivir."},
+  {name:"Radio JGM",city:"Chile",country:"Chile",lat:-33.46,lng:-70.65,web:"https://radiojgm.uchile.cl/",stream:"https://sonic.streamingchilenos.com:7005/stream",desc:"User-added station."},
+  {name:"Radio Siete",city:"Asuncion",country:"Paraguay",lat:-25.28,lng:-57.64,web:"https://www.siete.com.py/",stream:"https://rss1.siete.com.py:9433/stream",desc:"User-added station."},
+  {name:"Radio Deseo",city:"La Paz",country:"Bolivia",lat:-16.5,lng:-68.15,web:"https://radiodeseo.com/",stream:"https://conectperu.com/8396/stream",desc:"Radio Deseo está abierta a toda propuesta radial que tenga como base: no al machismo ni la misoginia, no a la homofobia, no al racismo, no al clasismo, respeto al aborto y respeto a las mujeres en situación de prostitución."},
+  {name:"Wayna Tambo",city:"El Alto",country:"Bolivia",lat:-16.5,lng:-68.18,web:"https://radiowaynatambobolivia.blogspot.com/",stream:"https://s2.myradiostream.com/5038/listen.mp3",desc:"Radio Intercultural y Comunitaria de la Red de la Diversidad que busca contribuir a la reconfiguración y vigorización de lo comunitario en Bolivia, desde la perspectiva del Vivir Bien como horizonte civilizatorio alternativo, y la Plurinacionalidad..."},
+  {name:"Radio Filarmonía",city:"Lima",country:"Peru",lat:-12.05,lng:-77.04,web:"https://www.radiosdelperu.com.pe/radio-filarmonia",stream:"https://c22.radioboss.fm:8100/stream",desc:"Radio Filarmonía, una emisora peruana muy querida, se dedica a la música clásica y a la promoción de la cultura. Su programación incluye una gran variedad de contenidos, como conciertos en vivo, entrevistas a músicos y compositores destacados, y programas educativos y culturales que enriquecen la vida de sus oyentes."},
+  // South America
+  {name:"Veneno",city:"Sao Paulo",country:"Brazil",lat:-23.55,lng:-46.63,web:"https://veneno.live/",stream:"https://veneno.out.airtime.pro/veneno_b",desc:"Created in 2018, Veneno was born from the idea of ​​unifying and solidifying the most diverse cultural initiatives. Based in downtown São Paulo, the radio today broadcasts a wide range of programs, dialoguing with different aesthetics and concepts."},
+  // Other
+  {name:"Areito Stéreo",city:"Quibdó",country:"Colombia",lat:5.69,lng:-76.66,web:"http://www.areito.com.co/",stream:"https://estructuraweb.com.co:9207/live",desc:"Areito, Danza que los habitantes aborígenes de las Antillas Mayores acompañaban con cantos durante sus fiestas y ritos religiosos. Su grupo objetivo es hombres y mujeres mayores de 30 años de estrato socio económico bajo, medio y alto."},
+  {name:"Javeriana Estéreo 91,9",city:"Bogotá",country:"Colombia",lat:4.71,lng:-74.07,web:"https://javerianaestereo.com/player-javeriana-estereo",stream:"https://radio06.cehis.net/proxy/javerian?mp=%2Fstream",desc:"Cuando empezó a funcionar, el 7 de septiembre de 1977, la entonces llamada Emisora Javeriana se convirtió en la primera estación radial universitaria en la banda de FM en el país y también la primera de su género en Bogotá."},
+  {name:"La Salsera FM",city:"Caracas",country:"Venezuela",lat:10.48,lng:-66.88,web:"https://lasalserafm2.webnode.page/",stream:"https://zeno.fm/player/lasalserafm",desc:"Orientada a los seguidores de los ritmos tropicales, La Salsera FM presenta una propuesta radial que explora las diferentes facetas de la salsa. En su catálogo musical convergen estilos variados que van desde la salsa romántica y melódica, centrada en las letras, hasta los ritmos más percusivos y tradicionales orientados al baile. Este enfoque integral permite a la emisora conectar tanto con el oyente casual como con el aficionado más conocedor."},
+  {name:"Rayan FM",city:"As-Suwayda",country:"Syria",lat:32.71,lng:36.57,web:"https://rayanfm.net/",stream:"https://a13.asurahosting.com/listen/r_fm/radio.mp3",desc:"Radio Al Rayyan is the first private radio that offers diverse content that covers the various interests of society and focusses on reviving heritage, starting from the heart of the city of Sweida to extending on the map in southern Syria. It provides the listener and the follower with a radio service that depends on accuracy and objectivity. It was founded in 2009 and since its establishment, it was considered the first station of its kind, which specialised in its launch to revive heritage and popular heritage."},
+  {name:"Radio Rapar",city:"Paramaribo",country:"Suriname",lat:5.85,lng:-55.2,web:"https://www.dbsuriname.com/?radio=rapar",stream:"https://audio-edge-es6pf.mia.g.radiomast.io/d7e8093b-6a7e-4442-a096-37f259cb7092",desc:"Suriname Weird Station"},
+  {name:"Chwiti Web",city:"Cayenne",country:"French Guyana",lat:4.93,lng:-52.33,web:"https://www.chwitiweb.com/",stream:"https://play.radioking.io/chwitiweb",desc:"Chwitiweb est une petite webradio Guyanaise qui promeut la musique reggae et les messages positifs. Chwitiweb... vini koute sa ki chouit"},
+  {name:"NTN Radio FM",city:"Georgetown",country:"Guyana",lat:6.8,lng:-58.16,web:"https://onlineradiobox.com/gy/ntnradio/",stream:"https://auds1.intacs.com/ntnradio",desc:"Bolywood in south america. No idea why.. Let’s go"},
+  {name:"Radio Vox 103.5 FM",city:"Aguadulce",country:"Panama",lat:8.44,lng:-80.55,web:"https://vox1035laradio.com/",stream:"https://cast1.my-control-panel.com/proxy/voxlarad/stream",desc:"La convergencia digital de música, tecnología y tendencias. Donde el sonido cobra vida."},
+  {name:"Osa Radio Online",city:"Palmar Norte",country:"Costa Rica",lat:8.95,lng:-83.46,web:"https://onlineosaradio.blogspot.com/",stream:"https://radioscr.digitaltvcr.xyz/listen/osaonline/osaradio",desc:"Transmitiendo desde el SUR SUR para todo el mundo"},
+  {name:"Radio Maria",city:"Panama City",country:"Panama",lat:8.99,lng:-79.52,web:"https://radiomaria.pa/",stream:"https://dreamsiteradiocp2.com/proxy/rmpanama2?mp=/stream",desc:"Radio María es un instrumento de la nueva evangelización que se pone al servicio de la Iglesia del Tercer Milenio, como emisora católica comprometida en el anuncio de la conversión a través de una parrilla de programación que ofrece una amplio espacio a la oración, a la catequesis y a la promoción humana."},
+  {name:"Radio U",city:"San José",country:"Costa Rica",lat:9.93,lng:-84.08,web:"https://radios.ucr.ac.cr/quienes-somos",stream:"https://r90.letio.com/io/?gs=8126&gsm=8126&type=live.m3u8",desc:"Las Radioemisoras de la Universidad de Costa Rica (Radios UCR) promovemos la libre manifestación de ideas mediante una programación diversa, creativa y de calidad. Somos tres emisoras de servicio público dedicadas a la difusión de contenidos artísticos, educativos, así como al análisis de la actualidad del país y de más allá de sus fronteras."},
+  {name:"Radio Cultural De Puriscal",city:"Santiago De Puriscal",country:"Costa Rica",lat:9.83,lng:-84.32,web:"https://www.radioculturaldepuriscal.com/",stream:"https://stream.zeno.fm/ucos1vhzikbtv",desc:"Un espacio de historias de éxito y superación; que tiene como propósito resaltar e incentivar los valores propios de nuestros pueblos y sus actores. La producción está a cargo de la periodista Jemima Estrada Palacios, junto a Radio Cultural de Puriscal 88.3 FM, para todos ustedes. ¡Esperamos que lo disfruten!"},
+  {name:"Bluefields",city:"Bluefields",country:"Nicaragua",lat:11.99,lng:-83.77,stream:"https://a10.asurahosting.com:8570/radio.mp3/;",desc:"The Best Country Reggae, Soca, Reggae, And More"},
+  {name:"Nicaragua Dancehall",city:"Managua",country:"Nicaragua",lat:12.15,lng:-86.28,web:"http://nicaraguareggae.com/",stream:"https://stream.zeno.fm/frfely84cjguv",desc:"Dancehall todo el día y toda la noche"},
+  {name:"Radio Camoapa",city:"Camoapa",country:"Nicaragua",lat:12.39,lng:-85.52,web:"https://radiocamoapa.com/quienes-somos/",stream:"https://c30.radioboss.fm:18546/radiocamoapa",desc:"Radio Camoapa es una emisora comunitaria, establecido una fuerte relación con la comunidad, permitiéndole afianzarse como el medio de comunicación de mayor impacto en la región central del país y ser una de las emisoras más importantes de Nicaragua."},
+  {name:"Subterraneo Americal",city:"Talanga",country:"Honduras",lat:14.42,lng:-87.08,web:"https://subterraneoamerical.com/",stream:"https://custom-azura1.asurahosting.com/listen/subterraneo_americal_radio/radio.mp3",desc:"Subterráneo Americal noticias Rock & Metal en todas su vertientes."},
+  // Europe
+  {name:"Radio 3 RNE",city:"Madrid",country:"Spain",lat:40.42,lng:-3.7,web:"https://rtve.es/radio/radio3",desc:"Spain's beloved public indie station. Alternative, experimental, Spanish music since 1979."},
+  {name:"Radio Gladys Palmora",city:"Madrid",country:"Spain",lat:40.42,lng:-3.7,web:"https://gladyspalmera.com/",stream:"https://streams.radio.co/s496c4d2e8/listen",desc:"En Radio Gladys Palmera nos gustan los ritmos con mucha personalidad, música con olor y sabor intensos, que suene distinguible, contundente y, porqué no, que sea arriesgada."},
+  // Other
+  {name:"Meow Club 91",city:"Tegucigalpa",country:"Honduras",lat:14.08,lng:-87.21,web:"https://thenonstopradio.com/radio/meow-club-91-radio",stream:"https://stream.zeno.fm/0chh40kgdwzuv?rj-ttl=5&rj-tok=AAABfAK1xvMAyZ0wO9HSPLNGOA",desc:"User-added station."},
+  {name:"Radio Otoro",city:"Otoro",country:"Honduras",lat:14.48,lng:-88.07,stream:"https://stream.playerlive.info:8089/live.aac",desc:"Latin Music"},
+  {name:"Radio Guarajambala",city:"Tegucigalpa",country:"Honduras",lat:14.08,lng:-87.21,web:"https://www.radioscomunitarias.info/radio-guarajambala/",stream:"https://stream.codigosur.org/guarajambala.mp3",desc:"La Red Mesoamericana es una red estratégica de alianzas orgánicas que reúne a varias radios comunitarias que nacen para fortalecer las luchas de las organizaciones sociales y los pueblos a las que pertenecen. Las organizaciones y radios miembros se definen como “medios comunitarios que difunden, contribuyen y promueven la conciencia social y cultural, orientando y educando a nuestros pueblos, y rompiendo el cerco mediático que mantiene a nuestros pueblos desinformados”."},
+  {name:"Arpas",city:"San Salvador",country:"El Salvador",lat:13.7,lng:-89.22,web:"https://arpas.org.sv/",stream:"https://stream.codigosur.org/arpas.mp3",desc:"Incidir conjuntamente con los sectores populares en la construcción de una sociedad democrática, equitativa y sustentable, a través de la comunicación participativa y alternativa y la educación popular."},
+  {name:"Radio Santa Cruz",city:"Guatemala",country:"Guatemala",lat:15.5,lng:-91.52,web:"https://radiosantacruzsanildefonso.com/",stream:"https://servidor26.brlogic.com:7014/live",desc:"La voz católica de la Diócesis de Huehuetenango, ubicada en San Ildefonso Ixtahuacán. Evangelizamos, informamos y acompañamos con fe, esperanza y amor."},
+  {name:"Vibra FM",city:"Quetzaltenango",country:"Guatemala",lat:14.83,lng:-91.52,web:"https://www.corporacionradialfm.com/vibrafm",stream:"https://radio.garden/api/ara/content/listen/dI0QR4Sx/channel.mp3?1778841486166",desc:"Somos una empresa con radios lideres en distintos puntos del País; Somos su mejor solución en publicidad para su empresa. Para contactarnos por favor puedes hacerlo por las siguientes vías"},
+  {name:"Nebaj Stereo FM",city:"Nebaj",country:"Guatemala",lat:15.4,lng:-91.12,web:"https://nebajstereoradioytv.com/",stream:"https://radio.garden/api/ara/content/listen/LNhKzLW1/channel.mp3?1778841744730",desc:"Nebaj Estéreo es una radio de gusto musical popular llegando a todo el público en general sin importancia de edad, nuestra experiencia en hacer de la radio algo diferente con nuestros segmentos musicales para todos los gustos, nuestros fieles oyentes nos recomiendan desde nuestro municipio en Nebaj, Quiche Fundada el 7 de octubre de 1999 siendo una emisora popular en nuestro municipio y sus aldeas."},
+  {name:"Alpha Boys School Radio",city:"Kingston",country:"Jamaica",lat:17.99,lng:-76.79,web:"http://www.alphaboysschoolradio.com/",stream:"http://alphaboys-live.streamguys1.com/alphaboys.mp3",desc:"ABSR was launched in 2013 with support from WXGR LP Dover (New Hampshire, USA) and Gritty, LLC, a non-profit led by Michael Wadleigh, Oscar-winner for the 1970 music documentary \"Woodstock\"."},
+  {name:"GT Reggae Radio",city:"Black River",country:"Jamaica",lat:18.02,lng:-77.85,web:"https://www.gtreggaeradio.live/i",stream:"https://radio.garden/api/ara/content/listen/Sxv8VfCU/channel.mp3?1778842941158",desc:"Station Info, GT Reggae Radio was started in 2020 by GT Taylor as a support for the people of Jamaica and the World to ease the stress of the pandemic.   GT Taylor has been a Reggae Radio Announcer/Presenter in Jamaica, W.I. for nearly 30 years. He can be heard on Reggae Radio with two popular Reggae & Dancehall programs every week. GT Taylor has been keeping listeners in Jamaica, also Worldwide listeners through the Internet, glued to his broadcasts with his magnetic vibes and an energy that is hard to compare."},
+  {name:"Estéreo Centro",city:"Santa Clara",country:"Cuba",lat:22.41,lng:-79.97,web:"https://radioestereocentro.blogspot.com/",stream:"https://radio.garden/api/ara/content/listen/EkZHPhCF/channel.mp3?1778843753857",desc:"User-added station."},
+  {name:"Radio Caribe",city:"Nueva Gerona",country:"Cuba",lat:21.88,lng:-82.8,web:"https://www.radiocaribe.icrt.cu/",stream:"https://icecast.teveo.cu/dXhtHs4P",desc:"La emisora Radio Caribe, es la única de su tipo existente en el Municipio Especial Isla de la Juventud, a ella se le adjunta la radio Base de Cocodrilo en el sur del territorio pinero."},
+  {name:"La Voz Del Niquel",city:"Moa",country:"Cuba",lat:20.66,lng:-74.94,web:"https://www.lavozdelniquel.icrt.cu/",stream:"https://icecast.teveo.cu/nj4PLTHR",desc:"Emisora La Voz Del Níquel creada el 24 de julio de 1979 cuenta con una programación variada de 18 horas de transmisión."},
+  {name:"Alter Radio",city:"Delmas",country:"Haiti",lat:18.54,lng:-72.3,web:"https://www.alterradio.org/",stream:"https://stream.zeno.fm/s096v26gfrruv",desc:"AlterRadio est une station du Groupe Médialternatif"},
+  {name:"Radio Seybo",city:"Santo Domingo",country:"Dominican Republic",lat:18.47,lng:-69.95,web:"https://www.radioseibo.org/",stream:"https://radioseibo.dominicos.org:8443/radio.ogg",desc:"Radio Seybo surge como un medio de comunicación al servicio de la evangelización el 4 de agosto de 1974, cuando la Orden de Predicadores adquiere el 100% de las acciones de sus antiguos propietario los Hermanos Cepeda de Hato Mayor, quienes fundaron a Radio Seybo el 1 de agosto de 1972 y mantuvieron esta estación como un medio comercial durante dos años."},
+];
+
+// ── Stream resolution ─────────────────────────────────────────────────────
+const RB = ["https://de1.api.radio-browser.info","https://nl1.api.radio-browser.info","https://at1.api.radio-browser.info"];
+
+async function getStream(s) {
+  if (s.stream) return s.stream;
+  const searches = [
+    name => `name=${encodeURIComponent(name)}&nameExact=true&limit=5&hidebroken=true`,
+    name => `name=${encodeURIComponent(name)}&limit=8&hidebroken=true&order=votes&reverse=true`,
+    name => `name=${encodeURIComponent(name.split(' ')[0])}&limit=8&hidebroken=true&order=votes&reverse=true`,
+  ];
+  for (const srv of RB) {
+    for (const buildQ of searches) {
+      try {
+        const r = await fetch(`${srv}/json/stations/search?${buildQ(s.name)}`);
+        const d = await r.json();
+        const url = d[0]?.url_resolved || d[0]?.url;
+        if (url) return url;
+      } catch(e) {}
+    }
+  }
+  return null;
+}
+
+async function searchRB() {
+  const q = document.getElementById('rbq').value.trim();
+  if (!q) return;
+  const btn = document.getElementById('rbgo');
+  btn.textContent = 'Searching…'; btn.disabled = true;
+  const el = document.getElementById('rblist');
+  try {
+    const r = await fetch(`${RB[0]}/json/stations/search?name=${encodeURIComponent(q)}&limit=8&hidebroken=true&order=votes&reverse=true`);
+    const d = await r.json();
+    el.innerHTML = d.length
+      ? d.map(s=>`<div class="rbs" onclick="fillRB('${encodeURIComponent(JSON.stringify({name:s.name,city:s.state||s.country,country:s.country,lat:parseFloat(s.geo_lat)||0,lng:parseFloat(s.geo_long)||0,stream:s.url_resolved||s.url,web:s.homepage}))}')"><div class="rbn">${s.name}</div><div class="rbm">${s.country}</div></div>`).join('')
+      : '<div class="rbs"><div class="rbm">No results</div></div>';
+  } catch(e) { el.innerHTML='<div class="rbs"><div class="rbm" style="color:#e74c3c">Search failed</div></div>'; }
+  btn.textContent = 'Search →'; btn.disabled = false;
+}
+
+function fillRB(enc) {
+  const s = JSON.parse(decodeURIComponent(enc));
+  document.getElementById('mname').value = s.name||'';
+  document.getElementById('mcity').value = s.city||'';
+  document.getElementById('mcountry').value = s.country||'';
+  document.getElementById('mstream').value = s.stream||'';
+  document.getElementById('mweb').value = s.web||'';
+  // remember lat/lng silently if RB provided them
+  _modalGeo = (s.lat || s.lng) ? {lat:s.lat, lng:s.lng} : null;
+  if (_modalGeo) setGeoStatus('ok', `📍 location prefilled (${s.lat.toFixed(2)}, ${s.lng.toFixed(2)})`);
+  document.getElementById('rblist').innerHTML = '<div style="font-size:10px;color:#3ecf6e;padding:6px 0;font-style:italic">✓ Filled — review and add</div>';
+}
+
+// ── State ─────────────────────────────────────────────────────────────────
+let custom = []; try { custom = JSON.parse(localStorage.getItem('rw_custom')||'[]'); } catch(e) {}
+let hiddenBuiltIns = new Set();
+try { hiddenBuiltIns = new Set(JSON.parse(localStorage.getItem('rw_hidden_builtin')||'[]')); } catch(e) {}
+let builtinOverrides = {};
+try { builtinOverrides = JSON.parse(localStorage.getItem('rw_overrides')||'{}'); } catch(e) {}
+
+let stations = [];
+function rebuildStations() {
+  const visible = [];
+  for (const b of BUILT_IN) {
+    if (hiddenBuiltIns.has(b.name)) continue;
+    visible.push(builtinOverrides[b.name] || b);
+  }
+  stations = [...visible, ...custom];
+}
+rebuildStations();
+
+let favs = new Set(); try { favs = new Set(JSON.parse(localStorage.getItem('rw_favs')||'[]')); } catch(e) {}
+let deadStations = new Set(); // names of stations whose stream couldn't be resolved
+let current = null, playing = false;
+let editingName = null;            // name of station being edited (null = adding)
+let editingType = null;            // 'custom' | 'builtin' | null
+let editingBuiltinKey = null;      // for built-in edits: the original BUILT_IN.name being overridden
+const audio = document.getElementById('audio-el');
+
+function isCustom(s) {
+  return custom.some(c => c.name === s.name);
+}
+// Returns the original BUILT_IN name a station maps to (direct or via override), or null.
+function builtinKeyFor(stationName) {
+  // Direct match
+  if (BUILT_IN.some(b => b.name === stationName) && !custom.some(c => c.name === stationName)) {
+    // Could also be shadowed by override under same name
+    if (!builtinOverrides[stationName] || builtinOverrides[stationName].name === stationName) return stationName;
+  }
+  // Indirect via override (renamed built-in)
+  for (const k of Object.keys(builtinOverrides)) {
+    if (builtinOverrides[k].name === stationName) return k;
+  }
+  // Plain built-in fallback
+  if (BUILT_IN.some(b => b.name === stationName)) return stationName;
+  return null;
+}
+
+function toggleFav(name) {
+  favs.has(name) ? favs.delete(name) : favs.add(name);
+  localStorage.setItem('rw_favs', JSON.stringify([...favs]));
+  renderList();
+  drawGlobe();
+  if (openStation?.name === name) refreshPopupIcons(name);
+  // Sync to Pi — best-effort, fire-and-forget
+  piPost('/api/favourites', { name });
+}
+
+function refreshPopupIcons(name) {
+  const isFav = favs.has(name);
+  const heart = document.querySelector('.pop-icon.heart');
+  if (heart) {
+    heart.className = 'pop-icon heart' + (isFav?' on':'');
+    heart.textContent = isFav ? '♥' : '♡';
+    heart.title = isFav ? 'Remove from favourites' : 'Add to favourites';
+  }
+}
+
+// ── White noise (FM static) ───────────────────────────────────────────────
+let _audioCtx = null;
+let _noiseSource = null, _noiseGain = null;
+function getCtx() {
+  if (!_audioCtx) {
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (_audioCtx.state === 'suspended') _audioCtx.resume();
+  return _audioCtx;
+}
+
+function startStatic() {
+  try {
+    stopStatic(0);
+    const ctx = getCtx();
+    const bufferSize = 2 * ctx.sampleRate;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = (Math.random()*2 - 1) * 0.6;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 2200;
+    filter.Q.value = 0.5;
+    _noiseSource = ctx.createBufferSource();
+    _noiseSource.buffer = buffer;
+    _noiseSource.loop = true;
+    _noiseGain = ctx.createGain();
+    const baseVol = parseFloat(document.getElementById('vol').value) * 0.35;
+    _noiseGain.gain.value = 0;
+    _noiseSource.connect(filter);
+    filter.connect(_noiseGain);
+    _noiseGain.connect(ctx.destination);
+    _noiseSource.start();
+    // Quick fade-in
+    _noiseGain.gain.linearRampToValueAtTime(baseVol, ctx.currentTime + 0.05);
+  } catch (e) { /* audio may be blocked */ }
+}
+
+function stopStatic(fadeMs = 350) {
+  if (!_noiseGain || !_noiseSource) return;
+  try {
+    const ctx = getCtx();
+    const now = ctx.currentTime;
+    _noiseGain.gain.cancelScheduledValues(now);
+    _noiseGain.gain.setValueAtTime(_noiseGain.gain.value, now);
+    _noiseGain.gain.linearRampToValueAtTime(0, now + fadeMs/1000);
+    const src = _noiseSource;
+    setTimeout(() => { try { src.stop(); } catch(e){} }, fadeMs + 50);
+  } catch(e) {}
+  _noiseSource = null; _noiseGain = null;
+}
+
+function onVolume(v) {
+  audio.volume = parseFloat(v);
+  // also reflect in noise if currently active
+  if (_noiseGain) {
+    try {
+      const ctx = getCtx();
+      _noiseGain.gain.setValueAtTime(parseFloat(v) * 0.35, ctx.currentTime);
+    } catch(e) {}
+  }
+}
+
+// ── Audio ─────────────────────────────────────────────────────────────────
+async function playStation(idx) {
+  const s = stations[idx];
+  const btn = document.getElementById('pop-playbtn');
+  if (current?.name === s.name && playing) { audio.pause(); return; }
+  if (btn) { btn.className='pop-play loading'; btn.textContent='⟳ tuning…'; }
+  startStatic();                                           // FM-style hiss while loading
+  document.getElementById('pmeta').textContent = '📡 tuning…';
+  document.getElementById('pname').textContent = s.name;
+  const url = await getStream(s);
+  if (!url) {
+    deadStations.add(s.name);                              // mark blue
+    stopStatic(150);
+    if (btn) { btn.className='pop-play dead'; btn.textContent='✕ stream not found'; }
+    document.getElementById('pmeta').textContent = '⚠ stream not found — try another';
+    drawGlobe(); renderList();
+    return;
+  }
+  current = s;
+  audio.src = url; audio.volume = parseFloat(document.getElementById('vol').value);
+  try { await audio.play(); playing = true; }
+  catch(e) {
+    stopStatic(150);
+    if(btn){ btn.className='pop-play'; btn.textContent='✕ blocked by browser'; }
+    return;
+  }
+  // station now playing — kill the static
+  setTimeout(() => stopStatic(450), 100);
+  deadStations.delete(s.name);
+  document.getElementById('pname').textContent = s.name;
+  document.getElementById('pmeta').textContent = s.city + ', ' + s.country;
+  updatePlayerUI(); renderList(); drawGlobe();
+  if(btn){ btn.className='pop-play stop'; btn.textContent='■ stop'; }
+}
+
+function togglePlay() {
+  if (!current) return;
+  if (playing) audio.pause(); else audio.play();
+}
+audio.addEventListener('play', ()=>{ playing=true; updatePlayerUI(); renderList(); drawGlobe(); });
+audio.addEventListener('pause', ()=>{ playing=false; updatePlayerUI(); renderList(); drawGlobe(); updatePopupBtn(); });
+audio.addEventListener('error', ()=>{
+  document.getElementById('pmeta').textContent='⚠ stream unavailable';
+  if (current) deadStations.add(current.name);
+  playing=false; stopStatic(150); updatePlayerUI(); drawGlobe(); renderList();
+});
+
+function updatePlayerUI() {
+  document.getElementById('picon').innerHTML = playing
+    ? '<rect x="1" y="0" width="3" height="12"/><rect x="6" y="0" width="3" height="12"/>'
+    : '<polygon points="0,0 10,6 0,12"/>';
+  document.getElementById('eq').classList.toggle('on', playing);
+}
+function updatePopupBtn() {
+  const btn = document.getElementById('pop-playbtn');
+  if (!btn || !current) return;
+  const isP = current.name === openStation?.name;
+  if(isP && playing){ btn.className='pop-play stop'; btn.textContent='■ stop'; }
+  else { btn.className='pop-play'; btn.textContent='▶ play'; }
+}
+
+// ── Sidebar ────────────────────────────────────────────────────────────────
+function renderList() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const all = stations.map((s,i)=>({...s,_i:i})).filter(s=>
+    !q || s.name.toLowerCase().includes(q) || s.city.toLowerCase().includes(q) || s.country.toLowerCase().includes(q)
+  );
+  const favList = all.filter(s=>favs.has(s.name));
+  const rest = all.filter(s=>!favs.has(s.name));
+  const mkItem = s => {
+    const isFav = favs.has(s.name);
+    const isAct = current?.name===s.name;
+    const isDead = deadStations.has(s.name);
+    const safeName = s.name.replace(/'/g,"\\'");
+    // Edit icon now shown for ALL stations (built-ins editable via overrides, deletable via hide flag)
+    const editIcon = `<button class="icon-btn edit-icon" onclick="openModalEdit('${safeName}');event.stopPropagation()" title="Edit / delete">✎</button>`;
+    return `<div class="si ${isAct?'active':''} ${isFav?'faved':''} ${isDead?'dead':''}" onclick="sidebarClick(${s._i})">
+      <div class="sd"></div>
+      <div class="sinfo"><div class="sn">${s.name}</div><div class="sl">${s.city}, ${s.country}</div></div>
+      ${editIcon}
+      <button class="icon-btn fheart ${isFav?'on':''}" onclick="toggleFav('${safeName}');event.stopPropagation()" title="${isFav?'Remove':'Favourite'}">♥</button>
+    </div>`;
+  };
+  const favSec = favList.length ? `<div class="fav-sep">♥ favourites</div>${favList.map(mkItem).join('')}` : '';
+  document.getElementById('list').innerHTML =
+    `<div class="sc">${all.length} stations</div>${favSec}${rest.map(mkItem).join('')}`;
+}
+
+function sidebarClick(idx) {
+  const s = stations[idx];
+  rotateTo(s.lng, s.lat, ()=>openPopup(idx));
+}
+
+// ── Globe (D3) ─────────────────────────────────────────────────────────────
+const canvas = document.getElementById('globe-canvas');
+const ctx = canvas.getContext('2d');
+let width, height, proj, path, world;
+let rotation = [-10, -45];
+let isDragging = false, dragStart = null, rotStart = null;
+let openStation = null, openIdx = null;
+let animFrame = null;
+
+async function loadWorld() {
+  const topo = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json').then(r=>r.json());
+  world = topojson.feature(topo, topo.objects.countries);
+  resize();
+  drawGlobe();
+}
+
+function resize() {
+  const wrap = document.getElementById('globe-wrap');
+  width = wrap.clientWidth; height = wrap.clientHeight;
+  canvas.width = width * devicePixelRatio;
+  canvas.height = height * devicePixelRatio;
+  canvas.style.width = width + 'px';
+  canvas.style.height = height + 'px';
+  ctx.setTransform(1, 0, 0, 1, 0, 0); // reset before re-applying DPR scale (prevents compounding on every resize)
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const r = Math.min(width, height) * 0.42;
+  proj = d3.geoOrthographic()
+    .scale(r)
+    .translate([width/2, height/2])
+    .clipAngle(90)
+    .rotate(rotation);
+  path = d3.geoPath(proj, ctx);
+}
+
+function drawGlobe() {
+  if (!proj) return;
+  proj.rotate(rotation);
+  ctx.clearRect(0, 0, width, height);
+  ctx.beginPath(); proj.clipAngle(180); path({type:'Sphere'}); proj.clipAngle(90);
+  ctx.fillStyle = '#0a0f14'; ctx.fill();
+  ctx.beginPath(); path({type:'Sphere'});
+  ctx.strokeStyle = '#1e2a35'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.beginPath(); path(d3.geoGraticule()());
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)'; ctx.lineWidth = .5; ctx.setLineDash([2,4]);
+  ctx.stroke(); ctx.setLineDash([]);
+  if (world) {
+    ctx.beginPath(); path(world);
+    ctx.fillStyle = '#1a1a1a'; ctx.fill();
+    ctx.beginPath(); path(world);
+    ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = .7; ctx.stroke();
+  }
+  stations.forEach((s, i) => {
+    const dist = d3.geoDistance([s.lng, s.lat], [-rotation[0], -rotation[1]]);
+    if (dist > Math.PI / 2) return;
+    const pt = proj([s.lng, s.lat]); if (!pt) return;
+    const [x, y] = pt;
+    const isFav = favs.has(s.name);
+    const isPlaying = current?.name === s.name && playing;
+    const isSelected = openIdx === i;
+    const isOpen = openIdx === i;
+    const isDead = deadStations.has(s.name);
+    if (isPlaying) {
+      ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(212,43,43,0.12)'; ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, 6.5, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(212,43,43,0.22)'; ctx.fill();
+    }
+    if (isSelected && !isPlaying) {
+      ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(212,43,43,0.5)'; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    const edgeFade = Math.max(0, 1 - (dist / (Math.PI / 2)) * 0.5);
+    const r = isOpen ? 5 : 4;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2);
+    if (isDead)        ctx.fillStyle = `rgba(43,109,212,${edgeFade})`;     // blue if stream dead
+    else if (isPlaying) ctx.fillStyle = `rgba(212,43,43,${edgeFade})`;
+    else if (isFav)    ctx.fillStyle = `rgba(212,43,43,${edgeFade})`;
+    else if (isSelected) ctx.fillStyle = `rgba(255,255,255,${edgeFade})`;
+    else ctx.fillStyle = `rgba(200,200,200,${0.7 * edgeFade})`;
+    ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2);
+    ctx.strokeStyle = `rgba(0,0,0,${0.6 * edgeFade})`; ctx.lineWidth = 1; ctx.stroke();
+  });
+}
+
+// ── Popup ──────────────────────────────────────────────────────────────────
+function openPopup(idx) {
+  const s = stations[idx];
+  openStation = s; openIdx = idx;
+  const isPlaying = current?.name === s.name && playing;
+  const isFav = favs.has(s.name);
+  const isDead = deadStations.has(s.name);
+  const webStr = s.web ? `<a class="pop-web" href="${s.web}" target="_blank">${s.web.replace(/^https?:\/\//,'')}</a>` : '';
+  const btnClass = isPlaying ? 'stop' : (isDead ? 'dead' : '');
+  const btnLabel = isPlaying ? '■ stop' : (isDead ? '✕ stream not found' : '▶ play');
+  const safeName = s.name.replace(/'/g,"\\'");
+  // Edit icon shown for all stations (built-ins editable via override, deletable via hide flag)
+  const editBtn = `<button class="pop-icon" onclick="openModalEdit('${safeName}')" title="Edit / delete">✎</button>`;
+  document.getElementById('popup-inner').innerHTML = `
+    <div class="pop-header">
+      <div class="pop-name">${s.name}</div>
+    </div>
+    <div class="pop-row">
+      <div class="pop-loc">${s.city}, ${s.country}</div>
+      ${editBtn}
+      <button class="pop-icon heart ${isFav?'on':''}" onclick="toggleFav('${safeName}')" title="${isFav?'Remove from favourites':'Add to favourites'}">${isFav?'♥':'♡'}</button>
+    </div>
+    <div class="pop-desc">${s.desc}</div>
+    ${webStr}
+    <button class="pop-play ${btnClass}" id="pop-playbtn" onclick="playStation(${idx})">${btnLabel}</button>
+  `;
+  const isMobile = window.innerWidth < 600;
+  if (isMobile) {
+    const sb = document.getElementById('sidebar');
+    const btn = document.getElementById('toggle-sidebar');
+    if (!sb.classList.contains('hidden')) {
+      sb.classList.add('hidden'); btn.textContent = '▶';
+      setTimeout(()=>{ resize(); drawGlobe(); positionPopup(); }, 260);
+      return;
+    }
+  }
+  positionPopup();
+  drawGlobe();
+}
+function positionPopup() {
+  if (openIdx === null) return;
+  const s = stations[openIdx];
+  const pt = proj([s.lng, s.lat]); if (!pt) return;
+  const [x, y] = pt;
+  const popup = document.getElementById('popup');
+  popup.style.display = 'block';
+  const pw = 230, ph = 240, margin = 10;
+  let left = x + 16;
+  if (left + pw > width - margin) left = x - pw - 16;
+  left = Math.max(margin, Math.min(width - pw - margin, left));
+  let top = y - ph / 2;
+  top = Math.max(margin, Math.min(height - ph - margin, top));
+  popup.style.left = left + 'px';
+  popup.style.top = top + 'px';
+}
+function closePopup() {
+  document.getElementById('popup').style.display = 'none';
+  openStation = null; openIdx = null; drawGlobe();
+}
+
+// ── Globe interaction ──────────────────────────────────────────────────────
+canvas.addEventListener('mousedown', e => {
+  isDragging = false; dragStart = [e.clientX, e.clientY]; rotStart = [...rotation];
+});
+canvas.addEventListener('mousemove', e => {
+  if (!dragStart) return;
+  const dx = e.clientX - dragStart[0], dy = e.clientY - dragStart[1];
+  if (Math.abs(dx) > 3 || Math.abs(dy) > 3) isDragging = true;
+  if (!isDragging) return;
+  const sens = 0.3;
+  rotation = [rotStart[0] + dx * sens, Math.max(-85, Math.min(85, rotStart[1] - dy * sens))];
+  drawGlobe();
+});
+canvas.addEventListener('mouseup', e => {
+  if (!isDragging) handleClick(e);
+  dragStart = null;
+});
+canvas.addEventListener('mouseleave', ()=>{ dragStart = null; });
+
+let pinchStartDist = null, pinchStartScale = null;
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (e.touches.length === 1) {
+    const t = e.touches[0];
+    dragStart = [t.clientX, t.clientY]; rotStart = [...rotation]; isDragging = false;
+    pinchStartDist = null;
+  } else if (e.touches.length === 2) {
+    dragStart = null;
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    pinchStartDist = Math.hypot(dx, dy);
+    pinchStartScale = proj.scale();
+  }
+}, {passive:false});
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (e.touches.length === 2 && pinchStartDist) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const dist = Math.hypot(dx, dy);
+    const scale = pinchStartScale * (dist / pinchStartDist);
+    proj.scale(Math.max(80, Math.min(width * 1.5, scale)));
+    drawGlobe();
+  } else if (e.touches.length === 1 && dragStart) {
+    const t = e.touches[0];
+    const dx = t.clientX - dragStart[0], dy = t.clientY - dragStart[1];
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) isDragging = true;
+    if (!isDragging) return;
+    rotation = [rotStart[0] + dx * .3, Math.max(-85, Math.min(85, rotStart[1] - dy * .3))];
+    drawGlobe();
+  }
+}, {passive:false});
+canvas.addEventListener('touchend', e => {
+  if (e.touches.length === 0) {
+    if (!isDragging && pinchStartDist === null) handleClick(e.changedTouches[0]);
+    dragStart = null; pinchStartDist = null;
+  }
+}, {passive:false});
+canvas.addEventListener('wheel', e=>{
+  e.preventDefault();
+  const r = proj.scale() * (e.deltaY>0 ? 0.9 : 1.1);
+  proj.scale(Math.max(80, Math.min(width, r)));
+  drawGlobe();
+},{passive:false});
+
+function handleClick(e) {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  let closest = null, minD = 16;
+  stations.forEach((s, i) => {
+    const dist = d3.geoDistance([s.lng, s.lat], [-rotation[0], -rotation[1]]);
+    if (dist > Math.PI / 2) return;
+    const pt = proj([s.lng, s.lat]); if (!pt) return;
+    const d = Math.hypot(pt[0]-mx, pt[1]-my);
+    if (d < minD) { minD=d; closest=i; }
+  });
+  if (closest !== null) openPopup(closest);
+  else closePopup();
+}
+
+function rotateTo(lng, lat, cb) {
+  const target = [-lng, -lat];
+  const start = [...rotation];
+  const t0 = performance.now();
+  const dur = 900;
+  function step(t) {
+    const p = Math.min(1, (t-t0)/dur);
+    const ease = p<.5 ? 2*p*p : -1+(4-2*p)*p;
+    rotation = [start[0]+(target[0]-start[0])*ease, start[1]+(target[1]-start[1])*ease];
+    drawGlobe();
+    if(p<1) requestAnimationFrame(step); else { rotation=target; if(cb) cb(); }
+  }
+  requestAnimationFrame(step);
+}
+
+// ── Modal: add / edit / delete ────────────────────────────────────────────
+let _modalGeo = null;     // last successful geocode in the modal
+let _geoTimer = null;
+let _geoSeq = 0;          // serial number to ignore stale geocode responses
+
+function openModal() {
+  editingName = null; editingType = null; editingBuiltinKey = null;
+  _modalGeo = null;
+  document.getElementById('mtitle').textContent = '+ add your radio';
+  document.getElementById('msave').textContent = 'Add station';
+  document.getElementById('mdelete').style.display = 'none';
+  ['mname','mcity','mcountry','mstream','mweb','mdesc'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('rblist').innerHTML = '';
+  setGeoStatus('', '📍 location auto-detected from city + country');
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('mname').focus(), 50);
+}
+
+function openModalEdit(stationName) {
+  const s = stations.find(x => x.name === stationName);
+  if (!s) return;
+  editingName = stationName;
+  if (isCustom(s)) {
+    editingType = 'custom';
+    editingBuiltinKey = null;
+  } else {
+    editingType = 'builtin';
+    editingBuiltinKey = builtinKeyFor(stationName);
+  }
+  _modalGeo = (s.lat || s.lng) ? {lat:s.lat, lng:s.lng} : null;
+  document.getElementById('mtitle').textContent = editingType === 'builtin' ? '✎ edit radio (built-in)' : '✎ edit radio';
+  document.getElementById('msave').textContent = 'Save changes';
+  document.getElementById('mdelete').style.display = 'block';
+  document.getElementById('mname').value = s.name || '';
+  document.getElementById('mcity').value = s.city || '';
+  document.getElementById('mcountry').value = s.country || '';
+  document.getElementById('mstream').value = s.stream || '';
+  document.getElementById('mweb').value = s.web || '';
+  document.getElementById('mdesc').value = s.desc || '';
+  document.getElementById('rblist').innerHTML = '';
+  setGeoStatus(_modalGeo ? 'ok' : '', _modalGeo ? `📍 saved location (${s.lat.toFixed(2)}, ${s.lng.toFixed(2)})` : '📍 location auto-detected from city + country');
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.getElementById('merr').style.display='none';
+  document.getElementById('rblist').innerHTML='';
+  editingName = null; editingType = null; editingBuiltinKey = null;
+}
+
+function setGeoStatus(cls, text) {
+  const el = document.getElementById('mgeo');
+  el.className = cls || '';
+  el.textContent = text;
+}
+
+function scheduleGeocode() {
+  // user is typing city/country — debounce 500ms then ask Nominatim
+  clearTimeout(_geoTimer);
+  const city = document.getElementById('mcity').value.trim();
+  const country = document.getElementById('mcountry').value.trim();
+  if (!city && !country) { setGeoStatus('', '📍 location auto-detected from city + country'); return; }
+  setGeoStatus('', '📍 looking up location…');
+  _geoTimer = setTimeout(() => geocodeNow(city, country), 500);
+}
+
+async function geocodeNow(city, country) {
+  const seq = ++_geoSeq;
+  const q = [city, country].filter(Boolean).join(', ');
+  try {
+    const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q), {
+      headers: { 'Accept-Language': 'en' }
+    });
+    const d = await r.json();
+    if (seq !== _geoSeq) return; // a newer request superseded this one
+    if (d && d[0]) {
+      _modalGeo = { lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon) };
+      setGeoStatus('ok', `📍 located: ${_modalGeo.lat.toFixed(2)}, ${_modalGeo.lng.toFixed(2)}`);
+    } else {
+      _modalGeo = null;
+      setGeoStatus('fail', '📍 not found — will save without coordinates');
+    }
+  } catch(e) {
+    if (seq !== _geoSeq) return;
+    _modalGeo = null;
+    setGeoStatus('fail', '📍 lookup failed (offline?)');
+  }
+}
+
+function saveStation() {
+  const name = document.getElementById('mname').value.trim();
+  const stream = document.getElementById('mstream').value.trim();
+  if (!name||!stream) { document.getElementById('merr').style.display='block'; return; }
+  const lat = _modalGeo?.lat || 0;
+  const lng = _modalGeo?.lng || 0;
+  const ns = {
+    name,
+    city: document.getElementById('mcity').value.trim() || 'Unknown',
+    country: document.getElementById('mcountry').value.trim() || 'Unknown',
+    lat, lng,
+    stream,
+    web: document.getElementById('mweb').value.trim(),
+    desc: document.getElementById('mdesc').value.trim() || 'User-added station.',
+  };
+  if (editingName && editingType === 'custom') {
+    const i = custom.findIndex(c => c.name === editingName);
+    if (i >= 0) custom[i] = ns;
+    if (editingName !== name) deadStations.delete(editingName);
+    localStorage.setItem('rw_custom', JSON.stringify(custom));
+  } else if (editingName && editingType === 'builtin') {
+    // Save as override on the original BUILT_IN entry
+    if (editingBuiltinKey) {
+      builtinOverrides[editingBuiltinKey] = ns;
+      localStorage.setItem('rw_overrides', JSON.stringify(builtinOverrides));
+    }
+    if (editingName !== name) deadStations.delete(editingName);
+  } else {
+    if (stations.some(s => s.name === name)) {
+      document.getElementById('merr').textContent = 'A station with that name already exists.';
+      document.getElementById('merr').style.display = 'block';
+      return;
+    }
+    custom.push(ns);
+    localStorage.setItem('rw_custom', JSON.stringify(custom));
+    // Sync new station to Pi — best-effort, fire-and-forget
+    piPost('/api/stations', {
+      'Continent':     '',
+      'Country':       ns.country,
+      'City':          ns.city,
+      'Radio Station': ns.name,
+      'Description':   ns.desc,
+      'Website':       ns.web,
+      'URL Link':      ns.stream,
+      'Favourite':     '',
+    });
+  }
+  rebuildStations();
+  closeModal(); renderList(); drawGlobe();
+}
+
+function deleteCurrentEdit() {
+  if (!editingName) return;
+  if (!confirm(`Delete "${editingName}"?`)) return;
+  if (editingType === 'custom') {
+    custom = custom.filter(c => c.name !== editingName);
+    localStorage.setItem('rw_custom', JSON.stringify(custom));
+  } else if (editingType === 'builtin' && editingBuiltinKey) {
+    hiddenBuiltIns.add(editingBuiltinKey);
+    delete builtinOverrides[editingBuiltinKey];
+    localStorage.setItem('rw_hidden_builtin', JSON.stringify([...hiddenBuiltIns]));
+    localStorage.setItem('rw_overrides', JSON.stringify(builtinOverrides));
+  }
+  favs.delete(editingName);
+  deadStations.delete(editingName);
+  localStorage.setItem('rw_favs', JSON.stringify([...favs]));
+  if (current?.name === editingName) { audio.pause(); current = null; }
+  rebuildStations();
+  closePopup();
+  closeModal();
+  renderList(); drawGlobe();
+}
+
+document.getElementById('modal-overlay').addEventListener('click',e=>{ if(e.target===document.getElementById('modal-overlay')) closeModal(); });
+window.addEventListener('resize',()=>{ resize(); drawGlobe(); });
+
+async function syncFromPi() {
+  // Fetch Pi favourites — merge into localStorage set (union, Pi wins additions)
+  const piData = await piGet('/api/favourites');
+  const piFavs = piData?.favourites ?? (Array.isArray(piData) ? piData : null);
+  if (Array.isArray(piFavs)) {
+    for (const name of piFavs) favs.add(name);
+    localStorage.setItem('rw_favs', JSON.stringify([...favs]));
+  }
+
+  // Fetch Pi stations — add any unknown ones as custom entries
+  const piStations = await piGet('/api/stations/json');
+  if (Array.isArray(piStations)) {
+    const existingNames = new Set(stations.map(s => s.name));
+    let added = 0;
+    for (const ps of piStations) {
+      if (!ps.name || !ps.stream) continue;
+      if (existingNames.has(ps.name)) continue;
+      custom.push({
+        name:    ps.name,
+        city:    ps.city    || 'Unknown',
+        country: ps.country || 'Unknown',
+        lat:     0,
+        lng:     0,
+        stream:  ps.stream,
+        web:     ps.web  || '',
+        desc:    ps.desc || 'Pi-synced station.',
+      });
+      added++;
+    }
+    if (added) {
+      localStorage.setItem('rw_custom', JSON.stringify(custom));
+      rebuildStations();
+    }
+  }
+
+  if (piFavs || piStations) { renderList(); drawGlobe(); }
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  if (window.innerWidth < 600) {
+    document.getElementById('sidebar').classList.add('hidden');
+    document.getElementById('toggle-sidebar').textContent = '▶';
+  }
+  renderList(); loadWorld();
+  syncFromPi();   // best-effort — silently no-ops if Pi is offline
+});
+
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const btn = document.getElementById('toggle-sidebar');
+  sb.classList.toggle('hidden');
+  btn.textContent = sb.classList.contains('hidden') ? '▶' : '☰';
+  setTimeout(()=>{ resize(); drawGlobe(); }, 260);
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// SmartGlobe Pen integration (full DB) ─────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────
+// Each entry: code -> [[country, ISO, region_label_or_null, lat_or_null, lng_or_null], ...]
+// Generated from WorldWebRadios_DataBase.numbers.
+const PEN_CODE_MAP = {
+  "a0108f": [["Central African Republic","CF",null,null,null]],
+  "a0145f": [["China","CN",null,null,null]],
+  "a0387f": [["United Kingdom","GB",null,null,null]],
+  "a0401f": [["Taiwan, Province of China","TW",null,null,null]],
+  "a0441f": [["Guatemala","GT",null,null,null]],
+  "a0465f": [["South Sudan","SS",null,null,null]],
+  "a0467f": [["Sudan","SD",null,null,null]],
+  "a0612f": [["Honduras","HN",null,null,null]],
+  "a0613f": [["Costa Rica","CR",null,null,null]],
+  "a0615f": [["Nicaragua","NI",null,null,null]],
+  "a0616f": [["Panama","PA",null,null,null]],
+  "a0631f": [["United States","US","texas",30.27,-97.74]],
+  "a0680f": [["Belize","BZ",null,null,null]],
+  "a0682f": [["El Salvador","SV",null,null,null]],
+  "a0691f": [["Mexico","MX",null,null,null]],
+  "a0692f": [["Mexico","MX",null,null,null]],
+  "a0694f": [["Mexico","MX",null,null,null]],
+  "a0704f": [["Cuba","CU",null,null,null],["Jamaica","JM",null,null,null]],
+  "a0706f": [["Canada","CA","echo bay",46.49,-84.06]],
+  "a0731f": [["Canada","CA","Quebec",46.81,-71.21]],
+  "a0741f": [["Bahamas","BS",null,null,null]],
+  "a0745f": [["Dominican Republic","DO",null,null,null]],
+  "a0746f": [["Grenada","GD",null,null,null]],
+  "a0747f": [["Haiti","HT",null,null,null]],
+  "a0749f": [["Barbados","BB",null,null,null]],
+  "a0752f": [["Trinidad and Tobago","TT",null,null,null]],
+  "a0764f": [["Saint Kitts and Nevis","KN",null,null,null]],
+  "a0765f": [["Saint Lucia","LC",null,null,null],["Saint Vincent and the Grenadines","VC",null,null,null]],
+  "a0766f": [["Antigua and Barbuda","AG",null,null,null],["Dominica","DM",null,null,null]],
+  "a0800f": [["Algeria","DZ",null,null,null]],
+  "a0801f": [["Angola","AO",null,null,null]],
+  "a0802f": [["Benin","BJ",null,null,null]],
+  "a0803f": [["Botswana","BW",null,null,null]],
+  "a0804f": [["Burkina Faso","BF",null,null,null]],
+  "a0805f": [["Burundi","BI",null,null,null]],
+  "a0806f": [["Cameroon","CM",null,null,null]],
+  "a0807f": [["Cabo Verde","CV",null,null,null]],
+  "a0809f": [["Chad","TD",null,null,null]],
+  "a0810f": [["Comoros","KM",null,null,null]],
+  "a0812f": [["Congo","CG",null,null,null]],
+  "a0814f": [["Côte d'Ivoire","CI",null,null,null]],
+  "a0815f": [["Djibouti","DJ",null,null,null]],
+  "a0816f": [["Egypt","EG",null,null,null]],
+  "a0817f": [["Equatorial Guinea","GQ",null,null,null]],
+  "a0819f": [["Ethiopia","ET",null,null,null]],
+  "a0820f": [["Gabon","GA",null,null,null]],
+  "a0821f": [["Gambia","GM",null,null,null]],
+  "a0822f": [["Ghana","GH",null,null,null]],
+  "a0823f": [["Guinea","GN",null,null,null]],
+  "a0824f": [["Guinea-Bissau","GW",null,null,null]],
+  "a0825f": [["Kenya","KE",null,null,null]],
+  "a0826f": [["Lesotho","LS",null,null,null]],
+  "a0827f": [["Liberia","LR",null,null,null]],
+  "a0828f": [["Libya","LY",null,null,null]],
+  "a0829f": [["Madagascar","MG",null,null,null]],
+  "a0830f": [["Malawi","MW",null,null,null]],
+  "a0831f": [["Mali","ML",null,null,null]],
+  "a0832f": [["Mauritania","MR",null,null,null]],
+  "a0833f": [["Mauritius","MU",null,null,null]],
+  "a0834f": [["Morocco","MA",null,null,null]],
+  "a0835f": [["Mozambique","MZ",null,null,null]],
+  "a0836f": [["Namibia","NA",null,null,null]],
+  "a0837f": [["Niger","NE",null,null,null]],
+  "a0838f": [["Nigeria","NG",null,null,null]],
+  "a0839f": [["Rwanda","RW",null,null,null]],
+  "a0840f": [["Sao Tome and Principe","ST",null,null,null]],
+  "a0841f": [["Senegal","SN",null,null,null]],
+  "a0842f": [["Seychelles","SC",null,null,null]],
+  "a0843f": [["Sierra Leone","SL",null,null,null]],
+  "a0844f": [["Somalia","SO",null,null,null]],
+  "a0845f": [["South Africa","ZA",null,null,null]],
+  "a0847f": [["Eswatini","SZ",null,null,null]],
+  "a0848f": [["Tanzania, United Republic of","TZ",null,null,null]],
+  "a0849f": [["Togo","TG",null,null,null]],
+  "a0850f": [["Tunisia","TN",null,null,null]],
+  "a0851f": [["Uganda","UG",null,null,null]],
+  "a0852f": [["Zambia","ZM",null,null,null]],
+  "a0853f": [["Zimbabwe","ZW",null,null,null]],
+  "a0860f": [["Albania","AL",null,null,null]],
+  "a0861f": [["Andorra","AD",null,null,null]],
+  "a0862f": [["Armenia","AM",null,null,null]],
+  "a0863f": [["Austria","AT",null,null,null]],
+  "a0864f": [["Azerbaijan","AZ",null,null,null]],
+  "a0865f": [["Belarus","BY",null,null,null]],
+  "a0866f": [["Belgium","BE",null,null,null]],
+  "a0867f": [["Bosnia and Herzegovina","BA",null,null,null]],
+  "a0868f": [["Bulgaria","BG",null,null,null]],
+  "a0869f": [["Croatia","HR",null,null,null]],
+  "a0870f": [["Cyprus","CY",null,null,null]],
+  "a0871f": [["Czechia","CZ",null,null,null]],
+  "a0872f": [["Denmark","DK",null,null,null]],
+  "a0873f": [["Estonia","EE",null,null,null]],
+  "a0875f": [["Finland","FI",null,null,null]],
+  "a0876f": [["France","FR",null,null,null]],
+  "a0877f": [["France","FR","south france",43.45,5.0],["Monaco","MC",null,null,null]],
+  "a0878f": [["Georgia","GE",null,null,null]],
+  "a0879f": [["Germany","DE",null,null,null]],
+  "a0881f": [["Greece","GR",null,null,null]],
+  "a0882f": [["Hungary","HU",null,null,null]],
+  "a0883f": [["Iceland","IS",null,null,null]],
+  "a0884f": [["Ireland","IE",null,null,null]],
+  "a0886f": [["Holy See (Vatican City State)","VA",null,null,null]],
+  "a0888f": [["Latvia","LV",null,null,null]],
+  "a0890f": [["Lithuania","LT",null,null,null]],
+  "a0892f": [["North Macedonia","MK",null,null,null]],
+  "a0893f": [["Malta","MT",null,null,null]],
+  "a0894f": [["Moldova, Republic of","MD",null,null,null]],
+  "a0896f": [["Netherlands","NL",null,null,null]],
+  "a0899f": [["Norway","NO",null,null,null]],
+  "a0900f": [["Poland","PL",null,null,null]],
+  "a0902f": [["Portugal","PT",null,null,null]],
+  "a0903f": [["Romania","RO",null,null,null]],
+  "a0947f": [["Brazil","BR",null,null,null]],
+  "a0949f": [["Brazil","BR",null,null,null]],
+  "a0950f": [["Brazil","BR",null,null,null]],
+  "a0952f": [["Brazil","BR",null,null,null]],
+  "a0905f": [["San Marino","SM",null,null,null]],
+  "a0907f": [["Slovakia","SK",null,null,null]],
+  "a0908f": [["Slovenia","SI",null,null,null]],
+  "a0910f": [["Spain","ES",null,null,null]],
+  "a0911f": [["Sweden","SE",null,null,null]],
+  "a0913f": [["Switzerland","CH",null,null,null]],
+  "a0914f": [["Turkey","TR",null,null,null]],
+  "a0915f": [["Turkey","TR",null,null,null],["Bolivia, Plurinational State of","BO",null,null,null]],
+  "a0917f": [["Ukraine","UA",null,null,null]],
+  "a0918f": [["Italy","IT",null,null,null]],
+  "a0936f": [["Serbia","RS",null,null,null]],
+  "a0937f": [["Montenegro","ME",null,null,null]],
+  "a0940f": [["Argentina","AR",null,null,null]],
+  "a0941f": [["Argentina","AR",null,null,null]],
+  "a0943f": [["Argentina","AR",null,null,null]],
+  "a0956f": [["Chile","CL",null,null,null]],
+  "a0958f": [["Chile","CL",null,null,null]],
+  "a0960f": [["Chile","CL",null,null,null]],
+  "a0961f": [["Colombia","CO",null,null,null]],
+  "a0962f": [["Ecuador","EC",null,null,null]],
+  "a0964f": [["Paraguay","PY",null,null,null]],
+  "a0965f": [["Peru","PE",null,null,null]],
+  "a0966f": [["Guyana","GY",null,null,null]],
+  "a0967f": [["Suriname","SR",null,null,null]],
+  "a0968f": [["Uruguay","UY",null,null,null]],
+  "a0969f": [["Venezuela, Bolivarian Republic of","VE",null,null,null]],
+  "a0983f": [["Indonesia","ID",null,null,null]],
+  "a1001f": [["Afghanistan","AF",null,null,null]],
+  "a1003f": [["Bahrain","BH",null,null,null]],
+  "a1004f": [["Bangladesh","BD",null,null,null]],
+  "a1005f": [["Bhutan","BT",null,null,null]],
+  "a1006f": [["Brunei Darussalam","BN",null,null,null]],
+  "a1007f": [["Cambodia","KH",null,null,null]],
+  "a1009f": [["Timor-Leste","TL",null,null,null]],
+  "a1016f": [["India","IN","Mumbai",19.08,72.88]],
+  "a1018f": [["India","IN","Bangalore",12.97,77.59]],
+  "a1019f": [["Iran, Islamic Republic of","IR",null,null,null]],
+  "a1022f": [["Iran, Islamic Republic of","IR",null,null,null]],
+  "a1023f": [["Iraq","IQ",null,null,null]],
+  "a1024f": [["Palestine","PS",null,null,null]],
+  "a1028f": [["Japan","JP",null,null,null]],
+  "a1032f": [["Jordan","JO",null,null,null]],
+  "a1033f": [["Kazakhstan","KZ",null,null,null]],
+  "a1037f": [["Kazakhstan","KZ",null,null,null]],
+  "a1040f": [["Korea, Democratic People's Republic of","KP",null,null,null]],
+  "a1041f": [["Kuwait","KW",null,null,null]],
+  "a1042f": [["Kyrgyzstan","KG",null,null,null]],
+  "a1043f": [["Lao People's Democratic Republic","LA",null,null,null]],
+  "a1045f": [["Lebanon","LB",null,null,null]],
+  "a1048f": [["Malaysia","MY",null,null,null]],
+  "a1050f": [["Mongolia","MN",null,null,null]],
+  "a1051f": [["Mongolia","MN",null,null,null]],
+  "a1052f": [["Mongolia","MN",null,null,null]],
+  "a1054f": [["Myanmar","MM",null,null,null]],
+  "a1056f": [["Nepal","NP",null,null,null]],
+  "a1057f": [["Oman","OM",null,null,null]],
+  "a1058f": [["Pakistan","PK",null,null,null]],
+  "a1062f": [["Philippines","PH",null,null,null]],
+  "a1065f": [["Qatar","QA",null,null,null]],
+  "a1066f": [["Saudi Arabia","SA",null,null,null]],
+  "a1068f": [["Saudi Arabia","SA",null,null,null]],
+  "a1069f": [["Saudi Arabia","SA",null,null,null]],
+  "a1070f": [["Singapore","SG",null,null,null]],
+  "a1071f": [["Sri Lanka","LK",null,null,null]],
+  "a1072f": [["Syrian Arab Republic","SY",null,null,null]],
+  "a1073f": [["Tajikistan","TJ",null,null,null]],
+  "a1074f": [["Thailand","TH",null,null,null]],
+  "a1077f": [["Turkmenistan","TM",null,null,null]],
+  "a1079f": [["United Arab Emirates","AE",null,null,null]],
+  "a1080f": [["Uzbekistan","UZ",null,null,null]],
+  "a1082f": [["Viet Nam","VN",null,null,null]],
+  "a1086f": [["Yemen","YE",null,null,null]],
+  "a1102f": [["China","CN",null,null,null]],
+  "a1104f": [["China","CN",null,null,null]],
+  "a1122f": [["China","CN",null,null,null]],
+  "a1144f": [["Russian Federation","RU",null,null,null]],
+  "a1155f": [["Russian Federation","RU",null,null,null]],
+  "a1167f": [["Russian Federation","RU",null,null,null]],
+  "a1178f": [["Russian Federation","RU",null,null,null]],
+  "a1202f": [["Kiribati","KI",null,null,null]],
+  "a1208f": [["Marshall Islands","MH",null,null,null]],
+  "a1209f": [["Marshall Islands","MH",null,null,null]],
+  "a1215f": [["Nauru","NR",null,null,null]],
+  "a1217f": [["New Zealand","NZ",null,null,null]],
+  "a1219f": [["New Zealand","NZ",null,null,null]],
+  "a1225f": [["Papua New Guinea","PG",null,null,null]],
+  "a1238f": [["American Samoa","AS",null,null,null]],
+  "a1248f": [["Palau","PW",null,null,null]],
+  "a1309f": [["United States","US","NewYork",40.71,-74.01]],
+  "a1310f": [["United States","US","los angeles",34.05,-118.24]],
+  "a1311f": [["United States","US","san fransisco",37.78,-122.42]],
+  "a1312f": [["Canada","CA","Vancouver",49.28,-123.12]],
+  "a1313f": [["Canada","CA","Toronto",43.65,-79.38]],
+  "a1323f": [["Chile","CL",null,null,null]],
+  "a1324f": [["Colombia","CO",null,null,null]],
+  "a1343f": [["Peru","PE",null,null,null]],
+  "a1362f": [["Eritrea","ER",null,null,null]],
+  "a1375f": [["Namibia","NA",null,null,null]],
+  "a1377f": [["Nigeria","NG",null,null,null]],
+  "a1425f": [["Afghanistan","AF",null,null,null]],
+  "a1426f": [["Bangladesh","BD",null,null,null]],
+  "a1429f": [["India","IN","new Delhi",28.61,77.21]],
+  "a1431f": [["Iran, Islamic Republic of","IR",null,null,null]],
+  "a1433f": [["Japan","JP",null,null,null]],
+  "a1434f": [["Kazakhstan","KZ",null,null,null]],
+  "a1435f": [["Korea, Republic of","KR",null,null,null]],
+  "a1439f": [["Maldives","MV",null,null,null]],
+  "a1440f": [["Mongolia","MN",null,null,null]],
+  "a1443f": [["Pakistan","PK",null,null,null]],
+  "a1444f": [["Philippines","PH",null,null,null]],
+  "a1445f": [["Saudi Arabia","SA",null,null,null]],
+  "a1446f": [["Sri Lanka","LK",null,null,null]],
+  "a1454f": [["India","IN","Kanpur",26.45,80.33]],
+  "a1466f": [["Fiji","FJ",null,null,null]],
+  "a1469f": [["Micronesia, Federated States of","FM",null,null,null]],
+  "a1472f": [["Samoa","WS",null,null,null]],
+  "a1473f": [["Solomon Islands","SB",null,null,null]],
+  "a1474f": [["Tonga","TO",null,null,null]],
+  "a1475f": [["Tuvalu","TV",null,null,null]],
+  "a1476f": [["Vanuatu","VU",null,null,null]],
+  "a1477f": [["Australia","AU","Sydney",-33.87,151.21]],
+  "a1478f": [["Australia","AU","melbourne",-37.81,144.96]],
+  "a1479f": [["Australia","AU","brisbane",-27.47,153.03]],
+  "a1480f": [["Australia","AU","perth",-31.95,115.86]],
+};
+
+// User overrides on top of PEN_CODE_MAP (manual assignments)
+let userPenMap = {};
+try { userPenMap = JSON.parse(localStorage.getItem('rw_user_pen_map')||'{}'); } catch(e) {}
+
+// Action zone mappings: pen code → action name ("favourite_toggle", "stop", …)
+let userActionMap = {};
+try { userActionMap = JSON.parse(localStorage.getItem('rw_action_map')||'{}'); } catch(e) {}
+
+// ISO2 → continent (for CSV export Continent column)
+const ISO_TO_CONTINENT = {
+  "AD":"Europe","AE":"Asia","AF":"Asia","AG":"North America","AL":"Europe","AM":"Asia","AO":"Africa",
+  "AR":"South America","AS":"Oceania","AT":"Europe","AU":"Oceania","AZ":"Asia","BA":"Europe",
+  "BB":"North America","BD":"Asia","BE":"Europe","BF":"Africa","BG":"Europe","BH":"Asia","BI":"Africa",
+  "BJ":"Africa","BN":"Asia","BO":"South America","BR":"South America","BS":"North America","BT":"Asia",
+  "BW":"Africa","BY":"Europe","BZ":"North America","CA":"North America","CF":"Africa","CG":"Africa",
+  "CH":"Europe","CI":"Africa","CL":"South America","CM":"Africa","CN":"Asia","CO":"South America",
+  "CR":"North America","CU":"North America","CV":"Africa","CY":"Asia","CZ":"Europe","DE":"Europe",
+  "DJ":"Africa","DK":"Europe","DM":"North America","DO":"North America","DZ":"Africa","EC":"South America",
+  "EE":"Europe","EG":"Africa","ER":"Africa","ES":"Europe","ET":"Africa","FI":"Europe","FJ":"Oceania",
+  "FM":"Oceania","FR":"Europe","GA":"Africa","GB":"Europe","GD":"North America","GE":"Asia","GH":"Africa",
+  "GM":"Africa","GN":"Africa","GQ":"Africa","GR":"Europe","GT":"North America","GW":"Africa",
+  "GY":"South America","HN":"North America","HR":"Europe","HT":"North America","HU":"Europe","ID":"Asia",
+  "IE":"Europe","IN":"Asia","IQ":"Asia","IR":"Asia","IS":"Europe","IT":"Europe","JM":"North America",
+  "JO":"Asia","JP":"Asia","KE":"Africa","KG":"Asia","KH":"Asia","KI":"Oceania","KM":"Africa",
+  "KN":"North America","KP":"Asia","KR":"Asia","KW":"Asia","KZ":"Asia","LA":"Asia","LB":"Asia",
+  "LC":"North America","LI":"Europe","LK":"Asia","LR":"Africa","LS":"Africa","LT":"Europe","LU":"Europe",
+  "LV":"Europe","LY":"Africa","MA":"Africa","MC":"Europe","MD":"Europe","ME":"Europe","MG":"Africa",
+  "MH":"Oceania","MK":"Europe","ML":"Africa","MM":"Asia","MN":"Asia","MR":"Africa","MT":"Europe",
+  "MU":"Africa","MV":"Asia","MW":"Africa","MX":"North America","MY":"Asia","MZ":"Africa","NA":"Africa",
+  "NE":"Africa","NG":"Africa","NI":"North America","NL":"Europe","NO":"Europe","NP":"Asia","NR":"Oceania",
+  "NZ":"Oceania","OM":"Asia","PA":"North America","PE":"South America","PG":"Oceania","PH":"Asia",
+  "PK":"Asia","PL":"Europe","PS":"Asia","PT":"Europe","PW":"Oceania","PY":"South America","QA":"Asia",
+  "RO":"Europe","RS":"Europe","RU":"Europe","RW":"Africa","SA":"Asia","SB":"Oceania","SC":"Africa",
+  "SD":"Africa","SE":"Europe","SG":"Asia","SI":"Europe","SK":"Europe","SL":"Africa","SM":"Europe",
+  "SN":"Africa","SO":"Africa","SR":"South America","SS":"Africa","ST":"Africa","SV":"North America",
+  "SY":"Asia","SZ":"Africa","TD":"Africa","TG":"Africa","TH":"Asia","TJ":"Asia","TL":"Asia","TM":"Asia",
+  "TN":"Africa","TO":"Oceania","TR":"Asia","TT":"North America","TV":"Oceania","TW":"Asia","TZ":"Africa",
+  "UA":"Europe","UG":"Africa","US":"North America","UY":"South America","UZ":"Asia","VA":"Europe",
+  "VC":"North America","VE":"South America","VN":"Asia","VU":"Oceania","WS":"Oceania","YE":"Asia",
+  "ZA":"Africa","ZM":"Africa","ZW":"Africa"
+};
+
+// Comprehensive country list (deduplicated by ISO) — built once from PEN_CODE_MAP.
+// Used by the assign popup datalist.
+const ALL_COUNTRIES = (() => {
+  const seen = new Map();
+  for (const candList of Object.values(PEN_CODE_MAP)) {
+    for (const c of candList) {
+      const [name, iso] = c;
+      if (!seen.has(iso)) seen.set(iso, name);
+    }
+  }
+  return [...seen.entries()]
+    .map(([iso, name]) => ({ iso, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+})();
+
+// Round-robin counter for the few codes that map to two countries
+const _penRR = {};
+function resolvePenCode(code) {
+  // User override takes priority
+  if (userPenMap[code]) return userPenMap[code];
+  const cands = PEN_CODE_MAP[code];
+  if (!cands || !cands.length) return null;
+  if (cands.length === 1) return cands[0];
+  const i = (_penRR[code] || 0);
+  _penRR[code] = i + 1;
+  return cands[i % cands.length];
+}
+
+// ── Audio dimming during TTS ──────────────────────────────────────────────
+// Drop the playing radio's volume by ~20 dB (factor of 0.1) for the duration
+// of the country announcement so the spoken name is clearly hearable.
+let _dimRAF = null;
+function rampAudioVolume(target, durationMs) {
+  if (audio.paused) return;
+  if (_dimRAF) cancelAnimationFrame(_dimRAF);
+  const start = audio.volume;
+  const startT = performance.now();
+  function step(t) {
+    const p = Math.min(1, (t - startT) / durationMs);
+    audio.volume = Math.max(0, Math.min(1, start + (target - start) * p));
+    if (p < 1) _dimRAF = requestAnimationFrame(step);
+    else _dimRAF = null;
+  }
+  _dimRAF = requestAnimationFrame(step);
+}
+function dimForAnnouncement() {
+  const sliderVol = parseFloat(document.getElementById('vol').value);
+  const target = sliderVol * 0.1;  // ≈ -20 dB
+  rampAudioVolume(target, 180);
+}
+function restoreAudioVolume() {
+  const sliderVol = parseFloat(document.getElementById('vol').value);
+  rampAudioVolume(sliderVol, 200);
+}
+
+// Map between country name strings used in BUILT_IN/custom and ISO2.
+// Built lazily from the existing station list.
+const STATION_COUNTRY_TO_ISO = {
+  "uk":"GB","united kingdom":"GB",
+  "ireland":"IE",
+  "france":"FR",
+  "belgium":"BE",
+  "netherlands":"NL",
+  "germany":"DE",
+  "portugal":"PT",
+  "spain":"ES",
+  "italy":"IT",
+  "poland":"PL",
+  "czechia":"CZ","czech republic":"CZ",
+  "denmark":"DK",
+  "sweden":"SE",
+  "estonia":"EE",
+  "ukraine":"UA",
+  "georgia":"GE",
+  "greece":"GR",
+  "palestine":"PS",
+  "ghana":"GH",
+  "india":"IN",
+  "south korea":"KR","korea":"KR",
+  "japan":"JP",
+  "australia":"AU",
+  "new zealand":"NZ",
+  "usa":"US","united states":"US","united states of america":"US","u.s.a.":"US",
+  "canada":"CA",
+  "brazil":"BR",
+  "argentina":"AR",
+};
+
+function isoOfStation(s) {
+  return STATION_COUNTRY_TO_ISO[(s.country || "").toLowerCase()] || null;
+}
+
+// Distance in km between two lat/lng points (Haversine)
+function distKm(lat1, lng1, lat2, lng2) {
+  const toRad = d => d * Math.PI / 180;
+  const R = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.asin(Math.sqrt(a));
+}
+
+// Build the ranked list of curated stations for a tap.
+// Priority:
+//   1. Favourites in country (closest to region first if region given), then by distance.
+//   2. Non-favourites in country (closest to region first if region given), then by distance.
+function rankCuratedStations(iso, regionLat, regionLng) {
+  const inCountry = stations
+    .map((s, i) => ({s, i}))
+    .filter(({s}) => isoOfStation(s) === iso);
+  if (!inCountry.length) return [];
+  // Annotate distance
+  for (const item of inCountry) {
+    if (regionLat != null) {
+      item.dist = distKm(regionLat, regionLng, item.s.lat, item.s.lng);
+    } else {
+      item.dist = 0; // no region — distance is irrelevant
+    }
+    item.fav = favs.has(item.s.name);
+  }
+  // Sort: fav first, then by distance, then by name (stable-ish)
+  inCountry.sort((a, b) => {
+    if (a.fav !== b.fav) return a.fav ? -1 : 1;
+    if (a.dist !== b.dist) return a.dist - b.dist;
+    return a.s.name.localeCompare(b.s.name);
+  });
+  return inCountry;
+}
+
+// Per-country (or per-region) tap counter so consecutive taps cycle through.
+let _lastTapKey = null;
+let _tapCounter = 0;
+function pickStationForTap(iso, regionLabel, regionLat, regionLng) {
+  const ranked = rankCuratedStations(iso, regionLat, regionLng);
+  if (!ranked.length) return null;
+  const key = iso + '|' + (regionLabel || '');
+  if (_lastTapKey !== key) {
+    _lastTapKey = key;
+    _tapCounter = 0;
+  } else {
+    _tapCounter += 1;
+  }
+  return ranked[_tapCounter % ranked.length];
+}
+
+// ── TTS: announce country name on tap ─────────────────────────────────────
+function cleanCountryForTTS(name) {
+  if (!name) return '';
+  return name
+    .replace(/, (Islamic |Bolivarian |Plurinational |Federated |United |Democratic People's )?Republic( of)?$/i, '')
+    .replace(/, Province of China$/i, '')
+    .replace(/Holy See \(Vatican City State\)/i, 'Vatican')
+    .replace(/, State of$/i, '')
+    .replace(/Lao People's Democratic Republic/i, 'Laos')
+    .replace(/Côte d'Ivoire/i, "Ivory Coast")
+    .replace(/, Federated States of$/i, '')
+    .trim();
+}
+
+let _lastAnnouncedKey = null;
+async function announceCountry(country, region) {
+  const text = region ? `${country}. ${region}` : country;
+  const key = country + '|' + (region || '');
+  // Skip re-announcing the same country on consecutive taps (cycling stations)
+  if (key === _lastAnnouncedKey) return;
+  _lastAnnouncedKey = key;
+  if (!('speechSynthesis' in window)) return;
+  return new Promise((resolve) => {
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'en-US';
+      u.rate = 1.0;
+      u.pitch = 1.0;
+      u.volume = parseFloat(document.getElementById('vol').value);
+      let done = false;
+      const finish = () => { if (!done) { done = true; resolve(); } };
+      u.onend = finish;
+      u.onerror = finish;
+      window.speechSynthesis.speak(u);
+      // Safety: never block longer than 3.5s
+      setTimeout(finish, 3500);
+    } catch (e) { resolve(); }
+  });
+}
+
+// ── UI: pen-pill flash ────────────────────────────────────────────────────
+function flashPenPill() {
+  const pill = document.getElementById('pen-pill');
+  if (!pill) return;
+  pill.classList.add('active');
+  clearTimeout(pill._fadeT);
+  pill._fadeT = setTimeout(() => pill.classList.remove('active'), 1200);
+}
+
+// Track the last pen tap so we can re-open the assign popup on demand
+let _lastPenCode = null;
+
+// ── Pen-code → country assignment popup ──────────────────────────────────
+function populateCountryDatalist() {
+  const dl = document.getElementById('country-list');
+  if (!dl || dl._populated) return;
+  dl.innerHTML = ALL_COUNTRIES.map(c => `<option value="${c.name}">${c.iso}</option>`).join('');
+  dl._populated = true;
+}
+
+let _selectedAction = null;
+
+function selectAction(action) {
+  _selectedAction = (_selectedAction === action) ? null : action;
+  document.querySelectorAll('.assign-action-btn').forEach(b => b.classList.remove('selected'));
+  if (_selectedAction) {
+    const btn = document.getElementById('action-btn-' + _selectedAction);
+    if (btn) btn.classList.add('selected');
+    // Clear location fields when an action is active
+    document.getElementById('assign-input').value = '';
+    document.getElementById('assign-city').value = '';
+    setAssignHint('ok', `will assign as action: ${_selectedAction}`);
+  } else {
+    setAssignHint('', '');
+  }
+}
+
+function openAssignPopup(code) {
+  if (!code) return;
+  populateCountryDatalist();
+  _selectedAction = null;
+  document.querySelectorAll('.assign-action-btn').forEach(b => b.classList.remove('selected'));
+  const pop = document.getElementById('assign-popup');
+  document.getElementById('assign-code-display').textContent = code;
+  const action   = userActionMap[code];
+  const override = userPenMap[code];
+  const builtin  = PEN_CODE_MAP[code];
+  const cur = document.getElementById('assign-current');
+  if (action) {
+    cur.className = 'assign-current overridden';
+    cur.textContent = `your action → ${action}`;
+    document.getElementById('assign-clear').style.display = 'block';
+    _selectedAction = action;
+    const btn = document.getElementById('action-btn-' + action);
+    if (btn) btn.classList.add('selected');
+  } else if (override) {
+    cur.className = 'assign-current overridden';
+    const [cName, cIso, cRegion] = override;
+    cur.textContent = `your override → ${cName} (${cIso})${cRegion ? ' · ' + cRegion : ''}`;
+    document.getElementById('assign-clear').style.display = 'block';
+  } else if (builtin && builtin.length) {
+    cur.className = 'assign-current';
+    cur.textContent = `built-in → ${builtin.map(c => c[0]).join(' / ')}`;
+    document.getElementById('assign-clear').style.display = 'none';
+  } else {
+    cur.className = 'assign-current';
+    cur.textContent = 'unmapped — pick a country or action';
+    document.getElementById('assign-clear').style.display = 'none';
+  }
+  const inp = document.getElementById('assign-input');
+  const cityInp = document.getElementById('assign-city');
+  inp.value = (override && !action) ? override[0] : '';
+  cityInp.value = (override && override[2] && !action) ? override[2] : '';
+  setAssignHint('', '');
+  pop.classList.add('open');
+  setTimeout(() => inp.focus(), 50);
+}
+
+function setAssignHint(cls, text) {
+  const el = document.getElementById('assign-hint');
+  el.className = 'assign-hint' + (cls ? ' ' + cls : '');
+  el.textContent = text || '';
+}
+
+function closeAssign() {
+  _selectedAction = null;
+  document.querySelectorAll('.assign-action-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('assign-popup').classList.remove('open');
+}
+
+function clearAssign() {
+  const code = document.getElementById('assign-code-display').textContent;
+  if (!code || code === '—') return;
+  delete userPenMap[code];
+  delete userActionMap[code];
+  localStorage.setItem('rw_user_pen_map', JSON.stringify(userPenMap));
+  localStorage.setItem('rw_action_map', JSON.stringify(userActionMap));
+  closeAssign();
+}
+
+async function saveAssign() {
+  const code = document.getElementById('assign-code-display').textContent;
+  if (!code || code === '—') return;
+
+  // Save as action if one is selected
+  if (_selectedAction) {
+    userActionMap[code] = _selectedAction;
+    delete userPenMap[code];
+    localStorage.setItem('rw_action_map', JSON.stringify(userActionMap));
+    localStorage.setItem('rw_user_pen_map', JSON.stringify(userPenMap));
+    closeAssign();
+    return;
+  }
+
+  const name = document.getElementById('assign-input').value.trim();
+  const city = document.getElementById('assign-city').value.trim();
+  if (!name) {
+    setAssignHint('fail', 'pick a country or select an action');
+    return;
+  }
+  let match = ALL_COUNTRIES.find(c => c.name === name);
+  if (!match) match = ALL_COUNTRIES.find(c => c.name.toLowerCase() === name.toLowerCase());
+  if (!match) {
+    setAssignHint('fail', `"${name}" not recognised — pick from suggestions`);
+    return;
+  }
+  let lat = null, lng = null;
+  if (city) {
+    setAssignHint('', `📍 looking up ${city}…`);
+    try {
+      const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(city + ', ' + match.name), { headers: {'Accept-Language':'en'} });
+      const d = await r.json();
+      if (d && d[0]) { lat = parseFloat(d[0].lat); lng = parseFloat(d[0].lon); }
+    } catch (e) {}
+  }
+  delete userActionMap[code];
+  localStorage.setItem('rw_action_map', JSON.stringify(userActionMap));
+  userPenMap[code] = [match.name, match.iso, city || null, lat, lng];
+  localStorage.setItem('rw_user_pen_map', JSON.stringify(userPenMap));
+  _lastAnnouncedKey = null;
+  closeAssign();
+  handlePenCode(code);
+}
+
+// ── Export panel ────────────────────────────────────────────────────────
+function csvEscape(v) {
+  const s = (v == null) ? '' : String(v);
+  if (/[,"\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function buildPenJsSnippet() {
+  const codes = Object.keys(userPenMap).sort();
+  if (!codes.length) return '// No overrides yet — tap an unmapped country code with the pen, label it, then come back here.';
+  const lines = codes.map(code => {
+    const [country, iso, region, lat, lng] = userPenMap[code];
+    const r = region == null ? 'null' : JSON.stringify(region);
+    const la = lat == null ? 'null' : lat;
+    const ln = lng == null ? 'null' : lng;
+    return `  "${code}": [[${JSON.stringify(country)},"${iso}",${r},${la},${ln}]],`;
+  });
+  return lines.join('\n');
+}
+
+function buildPenCsv() {
+  const header = ['code','country','iso','city','lat','lng'];
+  const rows = [header.join(',')];
+  for (const code of Object.keys(userPenMap).sort()) {
+    const [country, iso, region, lat, lng] = userPenMap[code];
+    rows.push([code, country, iso, region || '', lat ?? '', lng ?? ''].map(csvEscape).join(','));
+  }
+  return rows.join('\n') + '\n';
+}
+
+function buildRadioJsSnippet() {
+  // Emits the BUILT_IN array exactly as needed (built-ins respecting overrides
+  // and hidden flags, then customs appended).
+  const lines = ['const BUILT_IN = ['];
+  for (const s of stations) {
+    const obj = { name: s.name, city: s.city, country: s.country, lat: s.lat, lng: s.lng };
+    if (s.web)    obj.web = s.web;
+    if (s.stream) obj.stream = s.stream;
+    if (s.desc)   obj.desc = s.desc;
+    // JSON.stringify with single-quoted output isn't built-in; we emit JSON which is valid JS object literal too.
+    lines.push('  ' + JSON.stringify(obj) + ',');
+  }
+  lines.push('];');
+  return lines.join('\n');
+}
+
+function buildRadioCsv() {
+  const header = ['Continent','Country','City','Radio Station','Description','Website','URL Link','Favourite'];
+  const rows = [header.join(',')];
+  for (const s of stations) {
+    const iso = STATION_COUNTRY_TO_ISO[(s.country || '').toLowerCase()] || null;
+    let continent = ISO_TO_CONTINENT[iso] || '';
+    if (!continent && s.country === 'Global') continent = 'Global';
+    const fav = favs.has(s.name) ? 'yes' : '';
+    rows.push([continent, s.country, s.city, s.name, s.desc || '', s.web || '', s.stream || '', fav].map(csvEscape).join(','));
+  }
+  return rows.join('\n') + '\n';
+}
+
+function downloadFile(text, filename, mime) {
+  const blob = new Blob([text], { type: mime + ';charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function downloadPenCsv() {
+  const ts = new Date().toISOString().slice(0, 10);
+  downloadFile(buildPenCsv(), `oreilles-fm_pen-mappings_${ts}.csv`, 'text/csv');
+}
+function downloadRadioCsv() {
+  const ts = new Date().toISOString().slice(0, 10);
+  downloadFile(buildRadioCsv(), `oreilles-fm_radio-stations_${ts}.csv`, 'text/csv');
+}
+
+function copyExport(elemId, btn) {
+  const el = document.getElementById(elemId);
+  el.select();
+  const toastMap = {'pen-js-snippet':'pen-toast','radio-js-snippet':'radio-toast','action-js-snippet':'action-toast'};
+  const toastId = toastMap[elemId] || 'pen-toast';
+  const showToast = () => {
+    const t = document.getElementById(toastId);
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 1500);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(el.value).then(showToast).catch(showToast);
+  } else {
+    document.execCommand('copy');
+    showToast();
+  }
+}
+
+function clearPenOverrides() {
+  const n = Object.keys(userPenMap).length;
+  if (!n) return;
+  if (!confirm(`Clear all ${n} pen-code overrides from this browser?\n\nMake sure you've copied the JS snippet first if you want to keep them.`)) return;
+  userPenMap = {};
+  localStorage.removeItem('rw_user_pen_map');
+  document.getElementById('pen-js-snippet').value = buildPenJsSnippet();
+  document.getElementById('pen-count').textContent = '(0 overrides)';
+}
+
+function buildActionJsonSnippet() {
+  return JSON.stringify(userActionMap, null, 2);
+}
+
+function clearActionMappings() {
+  const n = Object.keys(userActionMap).length;
+  if (!n) return;
+  if (!confirm(`Clear all ${n} action zone mapping(s) from this browser?`)) return;
+  userActionMap = {};
+  localStorage.removeItem('rw_action_map');
+  document.getElementById('action-js-snippet').value = buildActionJsonSnippet();
+  document.getElementById('action-count').textContent = '(0 actions)';
+}
+
+function downloadActionJson() {
+  const ts = new Date().toISOString().slice(0, 10);
+  downloadFile(buildActionJsonSnippet(), `actions_${ts}.json`, 'application/json');
+}
+
+function openExport() {
+  const penCount    = Object.keys(userPenMap).length;
+  const actionCount = Object.keys(userActionMap).length;
+  document.getElementById('pen-count').textContent    = `(${penCount} override${penCount===1?'':'s'})`;
+  document.getElementById('radio-count').textContent  = `(${stations.length} stations)`;
+  document.getElementById('action-count').textContent = `(${actionCount} action${actionCount===1?'':'s'})`;
+  document.getElementById('pen-js-snippet').value    = buildPenJsSnippet();
+  document.getElementById('radio-js-snippet').value  = buildRadioJsSnippet();
+  document.getElementById('action-js-snippet').value = buildActionJsonSnippet();
+  document.getElementById('export-overlay').classList.add('open');
+}
+function closeExport() {
+  document.getElementById('export-overlay').classList.remove('open');
+}
+// Click backdrop closes
+document.addEventListener('DOMContentLoaded', () => {
+  const ov = document.getElementById('export-overlay');
+  if (ov) ov.addEventListener('click', e => { if (e.target === ov) closeExport(); });
+});
+
+// ── Fallback: fetch top station for ISO from radio-browser and play it ────
+async function playRBForCountry(iso, countryName, regionLat, regionLng) {
+  document.getElementById('pname').textContent = countryName;
+  document.getElementById('pmeta').textContent = `📡 ${iso} — searching radio-browser…`;
+  startStatic();
+  for (const srv of RB) {
+    try {
+      const r = await fetch(`${srv}/json/stations/bycountrycodeexact/${iso}?limit=30&hidebroken=true&order=votes&reverse=true`);
+      const d = await r.json();
+      let candidates = (d || []).filter(x => x.url_resolved || x.url);
+      if (!candidates.length) continue;
+      // If we have region coords, prefer stations close to it
+      if (regionLat != null) {
+        candidates.sort((a, b) => {
+          const da = distKm(regionLat, regionLng, parseFloat(a.geo_lat)||999, parseFloat(a.geo_long)||999);
+          const db = distKm(regionLat, regionLng, parseFloat(b.geo_lat)||999, parseFloat(b.geo_long)||999);
+          return da - db;
+        });
+      }
+      const station = candidates[0];
+      const url = station.url_resolved || station.url;
+      const synth = {
+        name: (station.name || `${countryName} radio`).trim(),
+        city: station.state || countryName,
+        country: countryName,
+        lat: parseFloat(station.geo_lat) || (regionLat || 0),
+        lng: parseFloat(station.geo_long) || (regionLng || 0),
+        stream: url,
+        web: station.homepage || "",
+        desc: `${(station.tags || "").split(",").slice(0,3).join(", ") || "Live"} · ${countryName}`,
+      };
+      current = synth;
+      audio.src = url; audio.volume = parseFloat(document.getElementById('vol').value);
+      try { await audio.play(); playing = true; }
+      catch (e) {
+        stopStatic(150);
+        document.getElementById('pmeta').textContent = '⚠ playback blocked — click ▶';
+        return;
+      }
+      setTimeout(() => stopStatic(450), 100);
+      document.getElementById('pname').textContent = synth.name;
+      document.getElementById('pmeta').textContent = `${synth.city}, ${synth.country}`;
+      updatePlayerUI(); renderList(); drawGlobe();
+      if (synth.lat || synth.lng) rotateTo(synth.lng, synth.lat);
+      return;
+    } catch (e) { /* try next mirror */ }
+  }
+  stopStatic(150);
+  restoreAudioVolume();   // nothing replaced the playing audio — un-dim it
+  document.getElementById('pmeta').textContent = `⚠ no station found for ${countryName}`;
+}
+
+async function handlePenCode(code) {
+  flashPenPill();
+  _lastPenCode = code;
+
+  // Action zone — handled by Pi only; show a brief note and open assign popup
+  // so the user can reconfigure if needed (one click on the pen pill reopens it).
+  if (userActionMap[code]) {
+    console.log('[pen] action zone:', code, '→', userActionMap[code]);
+    document.getElementById('pmeta').textContent = `⚡ action zone: ${userActionMap[code]}`;
+    return;
+  }
+
+  const resolved = resolvePenCode(code);
+  if (!resolved) {
+    console.log('[pen] unknown code:', code);
+    document.getElementById('pmeta').textContent = `🤷 unknown pen code: ${code} — pick a country`;
+    openAssignPopup(code);
+    return;
+  }
+  const [country, iso, region, regionLat, regionLng] = resolved;
+  console.log('[pen]', code, '→', country, `(${iso})${region ? ' · '+region : ''}`);
+
+  // 1. Dim previous radio (~-20 dB) so the country announcement is hearable.
+  dimForAnnouncement();
+
+  // 2. Announce country (first tap only — repeated taps cycle silently).
+  await announceCountry(cleanCountryForTTS(country), region);
+
+  // 3. Pick the curated station and play. playStation/playRBForCountry both
+  //    set audio.volume back to the slider value, so the dim auto-restores.
+  const pick = pickStationForTap(iso, region, regionLat, regionLng);
+  if (pick) {
+    rotateTo(pick.s.lng, pick.s.lat, () => {
+      openPopup(pick.i);
+      playStation(pick.i);
+    });
+  } else {
+    await playRBForCountry(iso, country, regionLat, regionLng);
+  }
+}
+
+// Pen pill click → re-open assign popup with the last tap's code
+document.addEventListener('DOMContentLoaded', () => {
+  const pill = document.getElementById('pen-pill');
+  if (pill) pill.addEventListener('click', () => {
+    if (_lastPenCode) openAssignPopup(_lastPenCode);
+    else {
+      // No tap yet — open with empty placeholder
+      populateCountryDatalist();
+      document.getElementById('assign-code-display').textContent = '—';
+      document.getElementById('assign-current').textContent = 'tap a country with the pen first';
+      document.getElementById('assign-input').value = '';
+      document.getElementById('assign-clear').style.display = 'none';
+      document.getElementById('assign-popup').classList.add('open');
+    }
+  });
+});
+
+// ── Keystroke listener — pen taps come in as a sequence of chars ──────────
+// Supports both QWERTY (US/UK) and AZERTY (French) keyboard layouts.
+// On AZERTY, the digit keys without shift produce: & é " ' ( § è ! ç à
+// and the QWERTY-A position produces 'q'. We normalise these back to digits/'a'.
+const PEN_KEY_NORMALIZE = {
+  '&':'1','é':'2','"':'3',"'":'4','(':'5','§':'6','è':'7','!':'8','ç':'9','à':'0',
+  'q':'a',  // AZERTY "a" key sends QWERTY scancode for q; on French keyboards we get 'q'
+};
+
+const PEN_PATTERN = /a\d{4,5}f/;
+const PEN_BUFFER_TIMEOUT_MS = 1500;
+let _penBuf = "";
+let _penLastT = 0;
+
+document.addEventListener('keydown', (e) => {
+  const tag = (e.target && e.target.tagName || "").toUpperCase();
+  if (tag === "INPUT" || tag === "TEXTAREA" || (e.target && e.target.isContentEditable)) return;
+  if (!e.key || e.key.length !== 1) return;
+  const ch = (PEN_KEY_NORMALIZE[e.key] !== undefined) ? PEN_KEY_NORMALIZE[e.key] : e.key.toLowerCase();
+  const now = Date.now();
+  if (now - _penLastT > PEN_BUFFER_TIMEOUT_MS) _penBuf = "";
+  _penLastT = now;
+  _penBuf += ch;
+  if (_penBuf.length > 32) _penBuf = _penBuf.slice(-32);
+  const m = _penBuf.match(PEN_PATTERN);
+  if (m) {
+    const code = m[0];
+    _penBuf = _penBuf.slice(_penBuf.indexOf(code) + code.length);
+    handlePenCode(code);
+  }
+});
+
+// ── Zones & Presets ────────────────────────────────────────────────────────
+let _zonesData   = [];
+let _presetsData = [];
+let _pmSlot      = null;  // currently editing preset slot
+
+function toggleSbSection(which) {
+  const body  = document.getElementById(which + '-body');
+  const arrow = document.getElementById(which + '-arrow');
+  const open  = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  arrow.textContent  = open ? '▸' : '▾';
+}
+
+async function loadZonesAndPresets() {
+  const data = await piGet('/api/zones');
+  if (!data) return;
+  _zonesData   = data.zones   || [];
+  _presetsData = data.presets || [];
+  renderZones();
+  renderPresets();
+}
+
+function _actionDotClass(action) {
+  if (!action) return 'stop';
+  if (action.startsWith('volume'))   return 'volume';
+  if (action.startsWith('preset'))   return 'preset';
+  if (action === 'favourite_toggle') return 'favourite';
+  if (action === 'random')           return 'random';
+  return 'stop';
+}
+
+function renderZones() {
+  const el = document.getElementById('zones-list');
+  if (!_zonesData.length) {
+    el.innerHTML = '<p class="sc">No zones configured.</p>';
+    return;
+  }
+  el.innerHTML = _zonesData.map(z => {
+    const isTbd    = (z.code || '').startsWith('TBD');
+    const dotClass = _actionDotClass(z.action);
+    const actionLabel = (z.action || '').replace(/_/g, ' ');
+    return `<div class="zone-row">
+      <span class="zone-dot ${dotClass}"></span>
+      <span class="zone-label" title="${esc(z.description || '')}">${esc(z.label || z.code)}</span>
+      <span class="zone-action">${esc(actionLabel)}</span>
+      ${isTbd
+        ? '<span class="tbd-badge">needs calibration</span>'
+        : `<span class="zone-code">${esc(z.code)}</span>`}
+      <button class="zone-edit-btn" onclick="openZoneEdit(${JSON.stringify(z.code)})" title="Edit zone">✎</button>
+    </div>`;
+  }).join('');
+}
+
+function renderPresets() {
+  const el = document.getElementById('presets-list');
+  if (!_presetsData.length) {
+    el.innerHTML = '<p class="sc">No presets.</p>';
+    return;
+  }
+  el.innerHTML = _presetsData.map(p => {
+    const hasStation = p.url && p.name;
+    return `<div class="preset-row">
+      <span class="preset-slot">${p.slot}</span>
+      <div class="preset-info">
+        <div class="preset-lbl">${esc(p.label || 'Preset ' + p.slot)}</div>
+        <div class="preset-name ${hasStation ? '' : 'preset-empty'}">${hasStation ? esc(p.name) : 'empty'}</div>
+      </div>
+      <button class="preset-edit-btn" onclick="openPresetEdit(${p.slot})" title="Edit preset">✎</button>
+    </div>`;
+  }).join('');
+}
+
+// ── Zone inline edit (simple prompt-style via label/description PUT) ─────────
+async function openZoneEdit(code) {
+  const zone = _zonesData.find(z => z.code === code);
+  if (!zone) return;
+  const newLabel = prompt(`Zone label for "${code}":`, zone.label || code);
+  if (newLabel === null) return;  // cancelled
+  const newDesc  = prompt('Description (optional):', zone.description || '');
+  if (newDesc  === null) return;
+  try {
+    const r = await fetch(PI_BASE + `/api/zones/${encodeURIComponent(code)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label: newLabel.trim(), description: newDesc.trim() }),
+    });
+    if (r.ok) await loadZonesAndPresets();
+  } catch (e) { /* Pi offline */ }
+}
+
+// ── Preset edit modal ─────────────────────────────────────────────────────────
+function openPresetEdit(slot) {
+  const preset = _presetsData.find(p => p.slot === slot);
+  _pmSlot = slot;
+  document.getElementById('pm-title').textContent = `Edit Preset ${slot}`;
+  document.getElementById('pm-label').value = preset ? (preset.label || '') : '';
+  document.getElementById('pm-name').value  = preset ? (preset.name  || '') : '';
+  document.getElementById('pm-url').value   = preset ? (preset.url   || '') : '';
+  document.getElementById('pm-rbq').value   = '';
+  document.getElementById('pm-rb-list').innerHTML = '';
+  document.getElementById('preset-modal-overlay').classList.add('open');
+}
+
+function closePmModal() {
+  document.getElementById('preset-modal-overlay').classList.remove('open');
+  _pmSlot = null;
+}
+
+async function savePmModal() {
+  if (!_pmSlot) return;
+  const body = {
+    label: document.getElementById('pm-label').value.trim(),
+    name:  document.getElementById('pm-name').value.trim(),
+    url:   document.getElementById('pm-url').value.trim(),
+  };
+  try {
+    const r = await fetch(PI_BASE + `/api/presets/${_pmSlot}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (r.ok) {
+      closePmModal();
+      await loadZonesAndPresets();
+    }
+  } catch (e) { /* Pi offline */ }
+}
+
+// Radio Browser search inside preset modal
+async function pmSearchRB() {
+  const q = document.getElementById('pm-rbq').value.trim();
+  if (!q) return;
+  const list = document.getElementById('pm-rb-list');
+  list.innerHTML = '<p class="sc">Searching…</p>';
+  try {
+    const servers = [
+      'https://de1.api.radio-browser.info',
+      'https://nl1.api.radio-browser.info',
+    ];
+    let results = null;
+    for (const srv of servers) {
+      try {
+        const r = await fetch(`${srv}/json/stations/search?name=${encodeURIComponent(q)}&hidebroken=true&order=clickcount&reverse=true&limit=8`);
+        if (r.ok) { results = await r.json(); break; }
+      } catch (_) {}
+    }
+    if (!results || !results.length) {
+      list.innerHTML = '<p class="sc">No results.</p>';
+      return;
+    }
+    list.innerHTML = results.map((s, i) => `
+      <div class="pm-rb-item" data-idx="${i}">
+        <div class="rbn">${esc(s.name)}</div>
+        <div class="rbm">${esc(s.country)} · ${esc(s.codec)} ${s.bitrate ? s.bitrate + 'kbps' : ''}</div>
+      </div>`).join('');
+    list.querySelectorAll('.pm-rb-item').forEach((el, i) => {
+      el.addEventListener('click', () => {
+        const s = results[i];
+        document.getElementById('pm-name').value = s.name;
+        document.getElementById('pm-url').value  = s.url_resolved || s.url;
+        list.innerHTML = '';
+        document.getElementById('pm-rbq').value = '';
+      });
+    });
+  } catch (e) {
+    list.innerHTML = '<p class="sc">Search failed.</p>';
+  }
+}
+
+// close preset modal on overlay click
+document.getElementById('preset-modal-overlay').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('preset-modal-overlay')) closePmModal();
+});
+
+// Load zones + presets on startup
+loadZonesAndPresets();
+</script>
+</body>
+</html>
