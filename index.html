@@ -460,6 +460,18 @@ audio { display: none; }
 .sys-dev-name { flex: 1; font-weight: 700; font-family: 'Syne', sans-serif; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sys-scan-list { max-height: 120px; overflow-y: auto; margin-bottom: 4px; }
 .sys-upd-out { font-size: 9px; color: var(--muted); font-style: italic; margin-top: 5px; max-height: 50px; overflow-y: auto; font-family: ui-monospace,monospace; word-break: break-all; display: none; }
+
+/* ── Access tier badges ── */
+#badge-globe {
+  font-size: 9px; color: #3ecf6e; font-family: 'Space Mono', monospace;
+  letter-spacing: .3px; white-space: nowrap; flex-shrink: 0;
+  border: 1px dashed rgba(62,207,110,0.4); padding: 4px 8px; border-radius: 2px;
+}
+#badge-dev {
+  font-size: 9px; color: #d4a72b; font-family: 'Space Mono', monospace;
+  letter-spacing: .3px; white-space: nowrap; flex-shrink: 0;
+  border: 1px dashed rgba(212,167,43,0.4); padding: 4px 8px; border-radius: 2px;
+}
 </style>
 </head>
 <body>
@@ -467,6 +479,8 @@ audio { display: none; }
 <div id="header">
   <button id="toggle-sidebar" onclick="toggleSidebar()" title="Toggle panel">☰</button>
   <div id="logo">ORELOJ</div>
+  <span id="badge-globe" style="display:none">● globe connected</span>
+  <span id="badge-dev" style="display:none">◆ dev mode</span>
   <div id="player">
     <button id="pbtn" onclick="togglePlay()">
       <svg id="picon" viewBox="0 0 10 12"><polygon points="0,0 10,6 0,12"/></svg>
@@ -722,8 +736,23 @@ audio { display: none; }
     <div class="assign-hint" id="assign-hint"></div>
     <div class="assign-divider">— or assign as action —</div>
     <div class="assign-action-row">
-      <button class="assign-action-btn" id="action-btn-favourite_toggle" onclick="selectAction('favourite_toggle')">♥ favourite toggle</button>
+      <button class="assign-action-btn" id="action-btn-favourite_toggle" onclick="selectAction('favourite_toggle')">♥ favourite</button>
       <button class="assign-action-btn" id="action-btn-stop" onclick="selectAction('stop')">■ stop</button>
+      <button class="assign-action-btn" id="action-btn-random" onclick="selectAction('random')">⚄ random</button>
+    </div>
+    <div class="assign-action-row">
+      <button class="assign-action-btn" id="action-btn-volume_up" onclick="selectAction('volume_up')">▲ vol up</button>
+      <button class="assign-action-btn" id="action-btn-volume_down" onclick="selectAction('volume_down')">▼ vol down</button>
+    </div>
+    <div class="assign-action-row">
+      <button class="assign-action-btn" id="action-btn-preset_1" onclick="selectAction('preset_1')">① preset 1</button>
+      <button class="assign-action-btn" id="action-btn-preset_2" onclick="selectAction('preset_2')">② preset 2</button>
+      <button class="assign-action-btn" id="action-btn-preset_3" onclick="selectAction('preset_3')">③ preset 3</button>
+    </div>
+    <div class="assign-action-row">
+      <button class="assign-action-btn" id="action-btn-preset_4" onclick="selectAction('preset_4')">④ preset 4</button>
+      <button class="assign-action-btn" id="action-btn-preset_5" onclick="selectAction('preset_5')">⑤ preset 5</button>
+      <button class="assign-action-btn" id="action-btn-preset_6" onclick="selectAction('preset_6')">⑥ preset 6</button>
     </div>
     <div class="assign-actions">
       <button id="assign-clear" onclick="clearAssign()" title="Remove your override (revert to built-in)">Reset</button>
@@ -780,6 +809,41 @@ async function piPost(path, body) {
     });
     clearTimeout(timer);
   } catch (e) { /* best-effort, silent fail */ }
+}
+
+// ── Access tiers ──────────────────────────────────────────────────────────────
+// Tier 1 = Public (default, everyone): browse/play/fav, no Pi sections.
+// Tier 2 = Globe Owner: auto-unlocked when Pi responds on load.
+// Tier 3 = Developer: unlocked by 5-tap logo gesture + PIN (session-only).
+let accessTier = 1;
+
+function applyTier(tier) {
+  if (tier < accessTier) return;           // never downgrade in a session
+  accessTier = tier;
+  const show = id => { const el = document.getElementById(id); if (el) el.style.display = ''; };
+  const hide = id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; };
+  // Tier 2+: show zones / presets / system; hide otherwise
+  if (tier >= 2) { show('zones-section'); show('presets-section'); show('system-section'); }
+  else           { hide('zones-section'); hide('presets-section'); hide('system-section'); }
+  // Tier 3 only: show developer section + dev badge
+  if (tier >= 3) { show('dev-section'); show('badge-dev'); }
+  else           { hide('dev-section'); hide('badge-dev'); }
+  // Globe badge: visible at tier 2+
+  if (tier >= 2) show('badge-globe');
+  else           hide('badge-globe');
+}
+
+// Apply tier 1 immediately — hides gated sidebar sections before first paint.
+applyTier(1);
+
+// Compute a SHA-256 hex hash of a PIN string (SubtleCrypto, with btoa fallback).
+async function _hashPin(pin) {
+  try {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pin));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  } catch(e) {
+    return btoa(unescape(encodeURIComponent(pin)));
+  }
 }
 
 // ── GitHub API helpers ────────────────────────────────────────────────────
@@ -1753,6 +1817,8 @@ window.addEventListener('resize',()=>{ resize(); drawGlobe(); });
 async function syncFromPi() {
   // Fetch Pi favourites — merge into localStorage set (union, Pi wins additions)
   const piData = await piGet('/api/favourites');
+  // Pi responded → Globe Owner tier
+  if (piData !== null && accessTier < 2) applyTier(2);
   const piFavs = piData?.favourites ?? (Array.isArray(piData) ? piData : null);
   if (Array.isArray(piFavs)) {
     for (const name of piFavs) favs.add(name);
@@ -1798,6 +1864,34 @@ window.addEventListener('DOMContentLoaded',()=>{
   const ghRepo = localStorage.getItem('oreloj_gh_repo') || 'n8b2bp67qj-collab/oreloj';
   document.getElementById('gh-token-input').value = ghTok;
   document.getElementById('gh-repo-input').value = ghRepo;
+
+  // ── Dev unlock: 5 quick taps on the ORELOJ logo within 2 seconds ─────────
+  // First visit: prompts for a PIN (min 4 chars) and stores its SHA-256 hash.
+  // Subsequent visits: 5 taps unlock silently (PIN already established).
+  (function() {
+    const logoEl = document.getElementById('logo');
+    if (!logoEl) return;
+    let taps = [];
+    logoEl.addEventListener('click', async () => {
+      const now = Date.now();
+      taps = taps.filter(t => now - t < 2000);
+      taps.push(now);
+      if (taps.length >= 5) {
+        taps = [];
+        const stored = localStorage.getItem('oreloj_dev_pin');
+        if (stored) {
+          // PIN already set — 5-tap gesture is sufficient, unlock silently
+          applyTier(3);
+        } else {
+          // First time — set a PIN and store its hash
+          const pin = prompt('Set a developer PIN (min 4 chars):');
+          if (!pin || pin.length < 4) return;
+          localStorage.setItem('oreloj_dev_pin', await _hashPin(pin));
+          applyTier(3);
+        }
+      }
+    });
+  })();
 
   renderList(); loadWorld();
   syncFromPi();      // best-effort — silently no-ops if Pi is offline
