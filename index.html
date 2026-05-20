@@ -536,6 +536,20 @@ audio { display: none; }
         </div>
       </div>
 
+      <!-- ── Actions / Calibration section ── -->
+      <div id="actions-section">
+        <div class="sb-section-hdr" onclick="toggleSbSection('actions')">
+          <span>● calibration</span>
+          <span class="sb-section-arrow" id="actions-arrow">▸</span>
+        </div>
+        <div class="sb-section-body" id="actions-body" style="display:none">
+          <div id="actions-list"><p class="sc">Loading…</p></div>
+          <div style="padding:6px 0;border-top:1px solid var(--border);margin-top:6px;">
+            <button id="cal-export-btn" onclick="calDownload()" style="width:100%;font-size:10px;padding:5px;font-family:'Space Mono',monospace;cursor:pointer;">↓ download calibration.csv</button>
+          </div>
+        </div>
+      </div>
+
       <!-- ── Developer section ── -->
       <div id="dev-section">
         <div class="sb-section-hdr" onclick="toggleSbSection('dev')">
@@ -766,9 +780,12 @@ audio { display: none; }
   </div>
 </div>
 <style>
+.zone-edit-btn.learn-active { background:var(--red); color:#fff; border-color:var(--red); }
 .zm-act { background:var(--surface); border:1px dashed var(--border); color:var(--muted); font-family:monospace; font-size:10px; padding:3px 7px; cursor:pointer; }
 .zm-act:hover { color:var(--text); border-color:var(--text); }
 .zm-act.selected { background:var(--red); color:#fff; border-color:var(--red); }
+#cp-learn-btn.listening { background:var(--red); color:#fff; border-color:var(--red); animation:pulse-btn 1s infinite; }
+@keyframes pulse-btn { 0%,100%{opacity:1} 50%{opacity:.5} }
 </style>
 
 <!-- Pen-code → country assignment popup -->
@@ -820,6 +837,14 @@ audio { display: none; }
     <span class="cp-flag" id="cp-flag">🌍</span>
     <span class="cp-name" id="cp-name">Country</span>
     <button class="cp-close" onclick="closeCountryPanel()">×</button>
+  </div>
+  <!-- Pen Codes section — Globe owner tier only -->
+  <div id="cp-pen-section" style="display:none;border-bottom:1px solid var(--border);padding:8px 12px;font-size:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <span style="color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.5px;font-size:9px;">Pen Codes</span>
+      <button id="cp-learn-btn" onclick="cpLearnCode()" style="font-size:9px;padding:2px 8px;background:var(--surface);border:1px dashed var(--border);color:var(--text);cursor:pointer;font-family:'Space Mono',monospace;" title="Tap the pen to assign a code to this country">Learn</button>
+    </div>
+    <div id="cp-pen-list" style="display:flex;flex-direction:column;gap:3px;"></div>
   </div>
   <div class="cp-list" id="cp-list"></div>
   <div class="cp-footer">
@@ -873,8 +898,8 @@ function applyTier(tier) {
   const show = id => { const el = document.getElementById(id); if (el) el.style.display = ''; };
   const hide = id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; };
   // Tier 2+: show zones / presets / system; hide otherwise
-  if (tier >= 2) { show('zones-section'); show('presets-section'); show('system-section'); }
-  else           { hide('zones-section'); hide('presets-section'); hide('system-section'); }
+  if (tier >= 2) { show('zones-section'); show('presets-section'); show('actions-section'); show('system-section'); }
+  else           { hide('zones-section'); hide('presets-section'); hide('actions-section'); hide('system-section'); }
   // Tier 3 only: show developer section + dev badge
   if (tier >= 3) { show('dev-section'); show('badge-dev'); }
   else           { hide('dev-section'); hide('badge-dev'); }
@@ -1945,6 +1970,7 @@ window.addEventListener('DOMContentLoaded',()=>{
 
   renderList(); loadWorld();
   syncFromPi();      // best-effort — silently no-ops if Pi is offline
+  loadCalibrationFromPi();  // load pen codes from Pi or fall back to PEN_CODE_MAP
   ghLoadStations();  // merge any stations saved to GitHub repo
 });
 
@@ -2204,6 +2230,34 @@ const PEN_CODE_MAP = {
   "a1480f": [["Australia","AU","perth",-31.95,115.86]],
 };
 
+// ── _calMap: runtime pen-code map (populated from Pi or from PEN_CODE_MAP) ──
+// On the Pi (PI_BASE=''), this is populated via /api/calibration on startup.
+// On the public site, it's a copy of the hardcoded PEN_CODE_MAP.
+let _calMap = {};
+
+async function loadCalibrationFromPi() {
+  if (PI_BASE === '') {
+    // Running on Pi — load from API
+    const data = await piGet('/api/calibration');
+    if (data && Array.isArray(data.rows)) {
+      _calMap = {};
+      for (const r of data.rows) {
+        const entry = [r.country_name, r.country_iso, r.region || null, r.lat, r.lng];
+        if (!_calMap[r.code]) _calMap[r.code] = [];
+        _calMap[r.code].push(entry);
+      }
+      console.log('[cal] loaded', Object.keys(_calMap).length, 'pen codes from /api/calibration');
+    } else {
+      // Fallback to hardcoded map
+      _calMap = Object.assign({}, PEN_CODE_MAP);
+      console.log('[cal] fallback to PEN_CODE_MAP');
+    }
+  } else {
+    // Public site — use hardcoded map
+    _calMap = Object.assign({}, PEN_CODE_MAP);
+  }
+}
+
 // User overrides on top of PEN_CODE_MAP (manual assignments)
 let userPenMap = {};
 try { userPenMap = JSON.parse(localStorage.getItem('rw_user_pen_map')||'{}'); } catch(e) {}
@@ -2250,7 +2304,8 @@ const ISO_TO_CONTINENT = {
 // Used by the assign popup datalist.
 const ALL_COUNTRIES = (() => {
   const seen = new Map();
-  for (const candList of Object.values(PEN_CODE_MAP)) {
+  const _srcMap = (Object.keys(_calMap).length ? _calMap : PEN_CODE_MAP);
+  for (const candList of Object.values(_srcMap)) {
     for (const c of candList) {
       const [name, iso] = c;
       if (!seen.has(iso)) seen.set(iso, name);
@@ -2266,7 +2321,7 @@ const _penRR = {};
 function resolvePenCode(code) {
   // User override takes priority
   if (userPenMap[code]) return userPenMap[code];
-  const cands = PEN_CODE_MAP[code];
+  const cands = _calMap[code] || PEN_CODE_MAP[code];
   if (!cands || !cands.length) return null;
   if (cands.length === 1) return cands[0];
   const i = (_penRR[code] || 0);
@@ -2478,7 +2533,7 @@ function openAssignPopup(code) {
   document.getElementById('assign-code-display').textContent = code;
   const action   = userActionMap[code];
   const override = userPenMap[code];
-  const builtin  = PEN_CODE_MAP[code];
+  const builtin  = _calMap[code] || PEN_CODE_MAP[code];
   const cur = document.getElementById('assign-current');
   if (action) {
     cur.className = 'assign-current overridden';
@@ -2571,6 +2626,14 @@ async function saveAssign() {
   localStorage.setItem('rw_action_map', JSON.stringify(userActionMap));
   userPenMap[code] = [match.name, match.iso, city || null, lat, lng];
   localStorage.setItem('rw_user_pen_map', JSON.stringify(userPenMap));
+  // Also persist to _calMap and Pi calibration API
+  if (!_calMap[code]) _calMap[code] = [];
+  _calMap[code] = _calMap[code].filter(e => e[1] !== match.iso);
+  _calMap[code].push([match.name, match.iso, city || null, lat, lng]);
+  piPost('/api/calibration', {
+    code, country_iso: match.iso, country_name: match.name,
+    region: city || '', lat: lat, lng: lng
+  });
   _lastAnnouncedKey = null;
   closeAssign();
   handlePenCode(code);
@@ -2776,6 +2839,10 @@ async function playRBForCountry(iso, countryName, regionLat, regionLng) {
 async function handlePenCode(code) {
   flashPenPill();
   _lastPenCode = code;
+  // If the country panel is in Learn mode, absorb this tap
+  if (await _cpLearnHandleCode(code)) return;
+  // If an action in the Actions panel is in Learn mode, absorb this tap
+  if (await _actionLearnHandleCode(code)) return;
 
   // Action zone — handled by Pi only; show a brief note and open assign popup
   // so the user can reconfigure if needed (one click on the pen pill reopens it).
@@ -2890,6 +2957,7 @@ async function loadZonesAndPresets() {
   _presetsData = data.presets || [];
   renderZones();
   renderPresets();
+  renderActions();
 }
 
 function _actionDotClass(action) {
@@ -2940,6 +3008,113 @@ function renderPresets() {
       <button class="preset-edit-btn" onclick="openPresetEdit(${p.slot})" title="Edit preset">✎</button>
     </div>`;
   }).join('');
+}
+
+// ── Actions / Calibration panel ───────────────────────────────────────────────
+const KNOWN_ACTIONS = [
+  { id: 'favourite_toggle', label: '♥ Favourite toggle' },
+  { id: 'volume_up',        label: '▲ Volume up' },
+  { id: 'volume_down',      label: '▼ Volume down' },
+  { id: 'random',           label: '⚄ Random station' },
+  { id: 'stop',             label: '■ Stop' },
+  { id: 'preset_1',         label: '① Preset 1' },
+  { id: 'preset_2',         label: '② Preset 2' },
+  { id: 'preset_3',         label: '③ Preset 3' },
+  { id: 'preset_4',         label: '④ Preset 4' },
+  { id: 'preset_5',         label: '⑤ Preset 5' },
+  { id: 'preset_6',         label: '⑥ Preset 6' },
+];
+
+let _actionLearnActive = null;  // action id currently in learn mode
+let _actionLearnTimer  = null;
+
+function renderActions() {
+  const el = document.getElementById('actions-list');
+  if (!el) return;
+  // Build reverse map: action → code (from _zonesData)
+  const actionToCode = {};
+  for (const z of _zonesData) {
+    if (z.action && z.code && !z.code.startsWith('TBD')) {
+      actionToCode[z.action] = z.code;
+    }
+  }
+  el.innerHTML = KNOWN_ACTIONS.map(a => {
+    const code = actionToCode[a.id] || null;
+    const isLearning = _actionLearnActive === a.id;
+    return `<div class="zone-row" id="action-row-${a.id}">
+      <span class="zone-label" style="flex:1">${esc(a.label)}</span>
+      <span class="zone-code" style="font-size:9px;color:${code ? 'var(--muted)' : 'var(--red)'}">${code || 'unset'}</span>
+      <button class="zone-edit-btn ${isLearning ? 'learn-active' : ''}"
+        onclick="actionLearn('${a.id}')"
+        title="${isLearning ? 'Cancel' : 'Tap pen to assign code'}">
+        ${isLearning ? '⏱' : '⌨'}
+      </button>
+    </div>`;
+  }).join('');
+}
+
+function actionLearn(actionId) {
+  if (_actionLearnActive === actionId) {
+    // Cancel
+    _actionLearnCancel();
+    return;
+  }
+  _actionLearnCancel();
+  _actionLearnActive = actionId;
+  let secs = 30;
+  renderActions();
+  _actionLearnTimer = setInterval(() => {
+    secs--;
+    if (secs <= 0) { _actionLearnCancel(); return; }
+  }, 1000);
+}
+
+function _actionLearnCancel() {
+  _actionLearnActive = null;
+  clearInterval(_actionLearnTimer);
+  _actionLearnTimer = null;
+  renderActions();
+}
+
+async function _actionLearnHandleCode(code) {
+  if (!_actionLearnActive) return false;
+  const actionId = _actionLearnActive;
+  _actionLearnCancel();
+
+  // Find or create zone for this action in _zonesData
+  const zone = _zonesData.find(z => z.action === actionId);
+  const label = KNOWN_ACTIONS.find(a => a.id === actionId)?.label || actionId;
+
+  if (zone) {
+    // Update existing zone's code
+    const oldCode = zone.code;
+    zone.code = code;
+    try {
+      const ctrl = new AbortController();
+      setTimeout(() => ctrl.abort(), 2000);
+      await fetch(PI_BASE + `/api/zones/${encodeURIComponent(oldCode)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ new_code: code }),
+        signal: ctrl.signal,
+      });
+    } catch(e) {}
+  } else {
+    // Create new zone
+    _zonesData.push({ code, action: actionId, label, description: '' });
+    piPost('/api/zones', { code, action: actionId, label, description: '' });
+  }
+  renderActions();
+  renderZones();
+  return true;
+}
+
+function calDownload() {
+  if (PI_BASE === '') {
+    window.open('/api/calibration/export', '_blank');
+  } else {
+    window.open(PI_BASE + '/api/calibration/export', '_blank');
+  }
 }
 
 // ── Zone edit modal ───────────────────────────────────────────────────────────
@@ -3173,6 +3348,12 @@ function openCountryPanel(iso2, name) {
   document.getElementById('cp-flag').textContent = _isoToFlag(iso2);
   document.getElementById('cp-name').textContent = name;
   _renderCountryList();
+  // Show pen-codes section only for Globe owner (tier 2+)
+  const penSection = document.getElementById('cp-pen-section');
+  if (penSection) {
+    penSection.style.display = accessTier >= 2 ? '' : 'none';
+    if (accessTier >= 2) _cpRenderPenCodes();
+  }
   document.getElementById('country-panel').classList.add('open');
 }
 
@@ -3202,6 +3383,116 @@ function _renderCountryList() {
 function closeCountryPanel() {
   document.getElementById('country-panel').classList.remove('open');
   _cpISO2 = null; _cpCountryName = null;
+  _cpLearnCancel();
+}
+
+// ── Country panel pen-code management ────────────────────────────────────────
+let _cpLearnTimer = null;
+
+function _cpRenderPenCodes() {
+  const iso = _cpISO2;
+  if (!iso) return;
+  const list = document.getElementById('cp-pen-list');
+  if (!list) return;
+  // Find all codes in _calMap that belong to this country
+  const codes = [];
+  for (const [code, entries] of Object.entries(_calMap)) {
+    for (const e of entries) {
+      if (e[1] === iso) {
+        codes.push({ code, region: e[2] || '' });
+      }
+    }
+  }
+  if (!codes.length) {
+    list.innerHTML = '<span style="color:var(--muted);font-size:9px;font-style:italic">No codes assigned. Tap 'Learn' then tap the globe.</span>';
+    return;
+  }
+  list.innerHTML = codes.map(({ code, region }) =>
+    `<div style="display:flex;align-items:center;gap:4px;padding:2px 0;">
+       <span style="font-family:'Space Mono',monospace;font-size:10px;flex:1">${esc(code)}${region ? ' · '+esc(region) : ''}</span>
+       <button onclick="cpUnassignCode('${code}','${iso}','${region}')" style="font-size:9px;padding:1px 5px;background:none;border:1px dashed var(--border);color:var(--muted);cursor:pointer;" title="Unassign">✕</button>
+     </div>`
+  ).join('');
+}
+
+async function cpUnassignCode(code, iso, region) {
+  if (!confirm(`Unassign code ${code} from this country?`)) return;
+  // Remove from _calMap
+  if (_calMap[code]) {
+    _calMap[code] = _calMap[code].filter(e => !(e[1] === iso && (e[2] || '') === region));
+    if (!_calMap[code].length) delete _calMap[code];
+  }
+  // Tell Pi
+  const params = iso ? `?iso=${encodeURIComponent(iso)}&region=${encodeURIComponent(region)}` : '';
+  try {
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), 2000);
+    await fetch(PI_BASE + `/api/calibration/${encodeURIComponent(code)}${params}`, { method: 'DELETE', signal: ctrl.signal });
+  } catch(e) {}
+  _cpRenderPenCodes();
+}
+
+let _cpLearnListenerActive = false;
+
+async function cpLearnCode() {
+  if (_cpLearnListenerActive) { _cpLearnCancel(); return; }
+  const btn = document.getElementById('cp-learn-btn');
+  if (!btn) return;
+  _cpLearnListenerActive = true;
+  btn.classList.add('listening');
+  let secs = 30;
+  btn.textContent = `Stop (${secs}s)`;
+  _cpLearnTimer = setInterval(() => {
+    secs--;
+    if (secs <= 0) { _cpLearnCancel(); return; }
+    if (btn) btn.textContent = `Stop (${secs}s)`;
+  }, 1000);
+}
+
+function _cpLearnCancel() {
+  _cpLearnListenerActive = false;
+  clearInterval(_cpLearnTimer);
+  _cpLearnTimer = null;
+  const btn = document.getElementById('cp-learn-btn');
+  if (btn) { btn.classList.remove('listening'); btn.textContent = 'Learn'; }
+}
+
+async function _cpLearnHandleCode(code) {
+  if (!_cpLearnListenerActive || !_cpISO2) return false;
+  _cpLearnCancel();
+
+  // Check if code already assigned to a different country
+  const existing = _calMap[code];
+  if (existing && existing.length && existing[0][1] !== _cpISO2) {
+    const existingName = existing[0][0];
+    if (!confirm(`Code ${code} is currently assigned to ${existingName}. Reassign to ${_cpCountryName}?`)) return true;
+    // Remove old assignment
+    delete _calMap[code];
+    try {
+      const ctrl = new AbortController();
+      setTimeout(() => ctrl.abort(), 2000);
+      await fetch(PI_BASE + `/api/calibration/${encodeURIComponent(code)}`, { method: 'DELETE', signal: ctrl.signal });
+    } catch(e) {}
+  }
+
+  // Ask for optional region name
+  const region = prompt(`Region label for ${_cpCountryName} (leave blank for none):`) || '';
+
+  // Update _calMap
+  const entry = [_cpCountryName, _cpISO2, region || null, null, null];
+  if (!_calMap[code]) _calMap[code] = [];
+  // Remove any existing entry for this iso+region on this code
+  _calMap[code] = _calMap[code].filter(e => !(e[1] === _cpISO2 && (e[2] || '') === region));
+  _calMap[code].push(entry);
+
+  // Tell Pi
+  piPost('/api/calibration', {
+    code, country_iso: _cpISO2, country_name: _cpCountryName,
+    region: region || '', lat: null, lng: null
+  });
+
+  _cpRenderPenCodes();
+  return true;
 }
 
 function cpAddStation() {
