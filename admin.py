@@ -12,10 +12,12 @@ import csv, io, json, os, re, select, subprocess, threading, time, urllib.reques
 from pathlib import Path
 from flask import Flask, send_file, jsonify, request, abort, redirect
 
-SCRIPT_DIR   = Path(__file__).parent
-STATIONS_CSV = SCRIPT_DIR / "stations.csv"
-FAVS_PATH    = SCRIPT_DIR / "favourites.json"
-ACTIONS_FILE = SCRIPT_DIR / "actions.json"
+SCRIPT_DIR       = Path(__file__).parent
+STATIONS_CSV     = SCRIPT_DIR / "stations.csv"
+FAVS_PATH        = SCRIPT_DIR / "favourites.json"
+ACTIONS_FILE     = SCRIPT_DIR / "actions.json"
+CALIBRATION_CSV  = SCRIPT_DIR / "calibration.csv"
+CAL_FIELDS       = ["code", "country_iso", "country_name", "region", "lat", "lng"]
 CSV_FIELDS   = ["Continent", "Country", "City", "Radio Station",
                  "Description", "Website", "URL Link", "Favourite"]
 
@@ -358,6 +360,136 @@ def api_presets_put(slot):
     write_actions(data)
     _notify_globe()
     return jsonify({"ok": True})
+
+
+# ── Calibration CSV helpers ────────────────────────────────────────────────────
+
+def read_calibration() -> list:
+    """Return list of dicts from calibration.csv."""
+    if not CALIBRATION_CSV.exists():
+        return []
+    with open(CALIBRATION_CSV, newline="", encoding="utf-8") as f:
+        return list(csv.DictReader(f))
+
+
+def write_calibration(rows: list) -> None:
+    """Atomically write rows to calibration.csv."""
+    tmp = Path(str(CALIBRATION_CSV) + ".tmp")
+    with open(tmp, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=CAL_FIELDS, extrasaction="ignore")
+        w.writeheader()
+        w.writerows(rows)
+    os.replace(tmp, CALIBRATION_CSV)
+
+
+# ── API: calibration ──────────────────────────────────────────────────────────
+
+@app.get("/api/calibration")
+def api_calibration_get():
+    """Return full calibration map as JSON."""
+    rows = read_calibration()
+    # Normalise: lat/lng to float or None
+    out = []
+    for r in rows:
+        out.append({
+            "code":         r.get("code", ""),
+            "country_iso":  r.get("country_iso", ""),
+            "country_name": r.get("country_name", ""),
+            "region":       r.get("region", ""),
+            "lat":          float(r["lat"]) if r.get("lat") else None,
+            "lng":          float(r["lng"]) if r.get("lng") else None,
+        })
+    return jsonify({"rows": out})
+
+
+@app.post("/api/calibration")
+def api_calibration_post():
+    """Add or update a calibration row. A code+country_iso+region triple is unique.
+    Returns 409 if the code is already assigned to a different country_iso."""
+    body = request.json or {}
+    code         = body.get("code", "").strip()
+    country_iso  = body.get("country_iso", "").strip().upper()
+    country_name = body.get("country_name", "").strip()
+    region       = body.get("region", "").strip()
+    lat          = body.get("lat", "")
+    lng          = body.get("lng", "")
+
+    if not code or not country_iso:
+        abort(400)
+
+    rows = read_calibration()
+
+    # Check for conflict: code already mapped to a DIFFERENT country_iso
+    for r in rows:
+        if r["code"] == code and r["country_iso"].upper() != country_iso:
+            # It's a conflict only if it's not the same row being updated
+            if not (r["code"] == code and r["country_iso"].upper() == country_iso and r.get("region", "") == region):
+                return jsonify({"ok": False, "conflict": True,
+                                "existing": r["country_name"]}), 409
+
+    # Find existing row for this code+iso+region triple and update it,
+    # or append a new row.
+    key = (code, country_iso, region)
+    updated = False
+    for r in rows:
+        if (r["code"] == code and r["country_iso"].upper() == country_iso
+                and r.get("region", "") == region):
+            r["country_name"] = country_name
+            r["lat"]  = lat if lat is not None else ""
+            r["lng"]  = lng if lng is not None else ""
+            updated = True
+            break
+
+    if not updated:
+        rows.append({
+            "code":         code,
+            "country_iso":  country_iso,
+            "country_name": country_name,
+            "region":       region,
+            "lat":          lat if lat is not None else "",
+            "lng":          lng if lng is not None else "",
+        })
+
+    write_calibration(rows)
+    _notify_globe()
+    return jsonify({"ok": True, "updated": updated})
+
+
+@app.delete("/api/calibration/<code>")
+def api_calibration_delete(code):
+    """Remove all rows for a code, or a specific row if ?iso=XX&region=YY provided."""
+    iso    = request.args.get("iso", "").strip().upper()
+    region = request.args.get("region", "").strip()
+
+    rows = read_calibration()
+    original_len = len(rows)
+
+    if iso:
+        # Remove only the matching iso (and optional region) row
+        new_rows = [r for r in rows if not (
+            r["code"] == code
+            and r["country_iso"].upper() == iso
+            and (not region or r.get("region", "") == region)
+        )]
+    else:
+        # Remove ALL rows for this code
+        new_rows = [r for r in rows if r["code"] != code]
+
+    if len(new_rows) == original_len:
+        abort(404)
+
+    write_calibration(new_rows)
+    _notify_globe()
+    return jsonify({"ok": True, "removed": original_len - len(new_rows)})
+
+
+@app.get("/api/calibration/export")
+def api_calibration_export():
+    """Return calibration.csv as a file download."""
+    if not CALIBRATION_CSV.exists():
+        abort(404)
+    return send_file(str(CALIBRATION_CSV), mimetype="text/csv",
+                     as_attachment=True, download_name="calibration.csv")
 
 
 # ── API: Bluetooth ────────────────────────────────────────────────────────────
