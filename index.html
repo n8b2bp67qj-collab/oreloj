@@ -3329,6 +3329,7 @@ function _esc(s) {
   return String(s ?? '').replace(/[&<>"']/g,
     c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 }
+const esc = _esc;
 
 // Find stations matching an ISO2 country code or country name
 function _stationsForCountry(iso2, countryName) {
