@@ -370,9 +370,14 @@ audio { display: none; }
 .zone-dot.random   { background: #3ecf6e; }
 .zone-dot.stop     { background: #555; }
 .zone-label  { flex: 1; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.zone-action { font-size: 9px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+.zone-action { font-size: 9px; color: #fff; white-space: nowrap; flex-shrink: 0; padding: 1px 5px; border-radius: 2px; font-style: italic; }
+.zone-action.volume   { background: #2b6dd4; }
+.zone-action.preset   { background: #d48e2b; }
+.zone-action.favourite{ background: var(--red); }
+.zone-action.random   { background: #3ecf6e; color: #000; }
+.zone-action.stop     { background: #444; }
 .zone-code   { font-size: 8px; color: #3a3a3a; font-style: italic; flex-shrink: 0; }
-.tbd-badge   { font-size: 8px; color: #444; border: 1px dashed #333; padding: 1px 4px; border-radius: 1px; flex-shrink: 0; }
+.tbd-badge   { font-size: 8px; color: #555; border: 1px dashed #333; padding: 1px 4px; border-radius: 1px; flex-shrink: 0; }
 .zone-edit-btn { background: none; border: none; cursor: pointer; font-size: 10px; color: #444; padding: 0 2px; line-height: 1; transition: color .15s; flex-shrink: 0; }
 .zone-edit-btn:hover { color: var(--text); }
 
@@ -2902,7 +2907,7 @@ function renderZones() {
     return `<div class="zone-row">
       <span class="zone-dot ${dotClass}"></span>
       <span class="zone-label" title="${esc(z.description || '')}">${esc(z.label || z.code)}</span>
-      <span class="zone-action">${esc(actionLabel)}</span>
+      <span class="zone-action ${dotClass}">${esc(actionLabel)}</span>
       ${isTbd
         ? '<span class="tbd-badge">needs calibration</span>'
         : `<span class="zone-code">${esc(z.code)}</span>`}
