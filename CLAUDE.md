@@ -1,80 +1,102 @@
 # Oreloj — Claude Code Context
 
-Oreloj is a hacked children's educational globe that plays live web radio from wherever you point the stylus. Tap a country, hear radio from that region. Built by Adrien. The globe is a product — it will be shipped to end users.
+Oreloj is a hacked Oregon Scientific Horizon globe that plays live web radio from wherever you point the stylus. Tap a country, hear radio from that region. Built by Adrien. The globe is a product — it will be shipped to end users.
 
 ## Hardware
 
-- **Globe:** Oregon Scientific Horizon Globe. The original USB stylus (SONiX HID, VID:0x0c45 PID:0x7700) acts as a barcode scanner for geography — each country tap sends a 6-char hex code (e.g. `a0387f` = UK).
-- **Pi:** Raspberry Pi 3 A+, runs headless inside/beside the globe.
+- **Globe:** Oregon Scientific Horizon Globe. USB stylus (SONiX HID, VID:0x0c45 PID:0x7700) acts as a barcode scanner — each tap sends a 6-char hex code (e.g. `a0387f` = UK).
+- **Pi:** Raspberry Pi 3 A+, headless inside/beside the globe.
 - **Audio:** Bluetooth speaker primary, 3.5mm jack fallback.
 
 ## Repo & live site
 
 - **Repo:** https://github.com/n8b2bp67qj-collab/oreloj
-- **Live site:** https://n8b2bp67qj-collab.github.io/oreloj/ (GitHub Pages, served from `index.html` at repo root)
-- **Pi admin UI:** http://oreloj.local:5000 on local network, or via the `oreloj` Wi-Fi hotspot captive portal
+- **Live site:** https://n8b2bp67qj-collab.github.io/oreloj/
+- **Pi interface:** http://oreloj.local:5000 — unified website + admin UI
 
 ## Key files
 
 | File | What it does |
 |---|---|
-| `index.html` | Single-file app (~3200 lines): public website AND Pi admin UI |
-| `globe.py` | Pi main process: reads pen HID events, resolves country codes, plays streams via mpv, TTS via espeak-ng |
-| `admin.py` | Flask on port 5000: REST API for stations, BT, Wi-Fi, presets, zones |
-| `stations.csv` | Canonical station list (Continent, Country, City, Radio Station, Description, Website, URL Link, Favourite) |
-| `actions.json` | Pen code → action/zone/preset mappings |
-| `globe.service` / `admin.service` | systemd services for the two Pi processes |
-| `99-globe-hid.rules` | udev rules so globe.py can read the HID device without root |
-| `oreloj-hotspot.sh` | iptables + dnsmasq captive portal for initial Wi-Fi setup |
+| `index.html` | Single-file app (~3200 lines): public website AND Pi admin UI in one |
+| `globe.py` | Pi main process: reads pen HID events, resolves country codes, plays via mpv, TTS via espeak-ng |
+| `admin.py` | Flask on port 5000: serves index.html + REST API (stations, BT, Wi-Fi, zones, presets, volume, update) |
+| `stations.csv` | Canonical station list on Pi |
+| `actions.json` | Zone registry: pen code → action, with label/description/position + 6 preset slots |
+| `favourites.json` | Favourite station names, shared between globe.py and admin.py |
+| `globe.service` / `admin.service` | systemd services |
+| `99-globe-hid.rules` | udev rules for HID access without root |
+| `oreloj-hotspot.sh` | iptables + dnsmasq captive portal for Wi-Fi setup |
 
 ## Architecture
 
 ### Two Pi services, loosely coupled via shared files
 
-**globe.py** reads pen codes via evdev (Pi) or pynput (Mac, for dev). Resolves codes against an embedded CODE_MAP (250+ country entries). Station priority: curated favourites → any curated → Radio Browser API fallback. Plays via mpv child process + Unix socket for volume control.
+**globe.py** reads pen codes via evdev (Pi) or pynput (Mac, for dev). Resolves against CODE_MAP (250+ entries). Station priority: favourites.json → curated → Radio Browser API. Plays via mpv + Unix socket. Actions dispatched from ACTION_MAP (volume up/down, random, stop, 6 presets, favourite_toggle).
 
-**admin.py** serves index.html and a REST API. Key endpoints: `/api/stations`, `/api/favourites`, `/api/zones`, `/api/presets`, `/api/bt/*`, `/api/wifi/*`, `/api/status`, `/api/volume`. Sends SIGHUP to globe.py after data writes so it reloads without restart.
+**admin.py** serves `index.html` directly and exposes a REST API. Key endpoints: `/api/stations`, `/api/stations/json`, `/api/favourites`, `/api/zones`, `/api/presets`, `/api/bt/*`, `/api/wifi/*`, `/api/status`, `/api/volume`, `/api/sync`, `/api/update`. Calls `_notify_globe()` after data writes to hot-reload globe.py.
 
-### index.html — dual-role file
+### index.html — unified interface
 
-The same file is the public GitHub Pages website and the Pi admin UI. `PI_BASE` is `''` on `oreloj.local`/`localhost`, otherwise `http://oreloj.local:5000`. All Pi API calls are fire-and-forget (2s timeout, silent fail when Pi is offline).
+One file serves as both the public website (GitHub Pages) and the Pi admin UI (`oreloj.local:5000`). `PI_BASE` is `''` on `oreloj.local`/`localhost`, otherwise `http://oreloj.local:5000`. All Pi calls are fire-and-forget (2s timeout).
+
+**3-tier access:**
+- **Public** (default) — browse globe, play stations, localStorage favourites
+- **Globe owner** (auto, Pi detected) — zones, presets, Bluetooth, WiFi, Update
+- **Developer** (5-tap logo + PIN) — GitHub PAT config, data export, calibration tools
 
 ### Client-side data model (localStorage)
 
 | Key | Contents |
 |---|---|
-| `rw_custom` | User-added stations (JSON array) |
-| `rw_overrides` | Edits to BUILT_IN stations (JSON object) |
-| `rw_hidden_builtin` | Deleted BUILT_IN names (JSON array) |
-| `rw_favs` | Favourite station names (JSON array) |
-| `rw_user_pen_map` | User pen code → country overrides |
-| `rw_action_map` | User pen code → action mappings |
-| `oreloj_gh_token` | GitHub PAT for repo writes |
+| `rw_custom` | User-added stations |
+| `rw_overrides` | Edits to BUILT_IN stations |
+| `rw_hidden_builtin` | Deleted BUILT_IN names |
+| `rw_favs` | Favourite names (cache; Pi is source of truth when connected) |
+| `oreloj_dev_pin` | SHA-256 hash of developer PIN |
+| `oreloj_gh_token` | GitHub PAT |
 | `oreloj_gh_repo` | GitHub repo (default: `n8b2bp67qj-collab/oreloj`) |
-| `oreloj_gh_branch` | Branch (default: `main`) |
 
-`BUILT_IN` is a hardcoded array of 100+ curated stations in index.html. `rebuildStations()` merges BUILT_IN + overrides + custom into the working `stations` array.
+### actions.json schema
 
-### GitHub as database
+```json
+{
+  "zones": [{"code": "a0337f", "action": "favourite_toggle", "label": "Zone A", "description": "", "position": null}],
+  "presets": [{"slot": 1, "name": "", "url": "", "label": "Preset 1"}]
+}
+```
+Codes starting with `TBD_` are skipped at runtime — assign real codes via calibration.
 
-`stations.csv` in the repo is the canonical station list. index.html writes back to it via the GitHub Contents API on every station add/delete/fav toggle. PAT is stored in localStorage (never in source). Functions: `ghGetFile`, `ghPutFile`, `ghSaveStations`, `ghLoadStations`. The `● developer` section in the sidebar is where the PAT and repo are configured.
+## Adding action zones (how-to)
+
+1. Plug the globe pen into your Mac
+2. In Terminal: `cd ~/Documents/Claude/Projects/Web\ Radio\ Interactive\ Globe && python3 globe.py --calibrate`
+3. Tap any blank spot on the globe — a hex code prints in the terminal
+4. Open http://oreloj.local:5000 → sidebar → **Zones** panel
+5. Find the TBD zone you want (e.g. "Volume Up") → click **Edit** → paste the code
+6. Write a label on the globe surface with a marker (safe — won't affect the infrared dot pattern)
+7. Repeat for each zone
 
 ## Active development priorities
 
-1. **Add radio stations** — build up the curated list in stations.csv before shipping
-2. **Calibrate pen codes** — plug pen into laptop, run `globe.py --calibrate`, codes print to terminal, paste into the website assign UI to map to countries or actions
-3. **Create action zones** — draw zones on the physical globe surface, tap to get codes, assign actions (volume up/down, presets 1–6, favourite toggle)
+1. **Calibrate action zones** — assign real codes to the 9 TBD zones (volume up/down, random, presets 1–6)
+2. **Set 6 presets** — open admin UI → Presets panel, assign stations to slots 1–6
+3. **Push to GitHub** — delete `.git/index.lock` then `git add . && git commit -m "..." && git push`
+4. **Add radio stations** — build up stations.csv before shipping
 
-## Planned features (not yet built)
+## Planned features
 
-- **Globe detection:** website tries `fetch('http://oreloj.local:5000/api/status')` on load; if it responds, show "Globe connected" banner. Requires `Access-Control-Allow-Private-Network: true` header in admin.py.
-- **Public access tiers:** anyone can browse/play/fav (localStorage); globe owners get add/calibrate/preset features when globe is detected on the same network.
-- **Onboarding flow:** first-time welcome modal on the admin UI guiding through Wi-Fi → Bluetooth setup. `localStorage` flag so it only shows once.
-- **Presets GitHub sync:** preset slots (6 stations) should persist to GitHub like stations do.
+- **Onboarding flow** — first-time modal guiding Wi-Fi → Bluetooth setup
+- **Zone positions on map** — show action icons on the globe SVG once zones are calibrated
+- **Presets GitHub sync** — persist preset slots to GitHub
 
-## Decisions already made
+## Decisions made
 
-- **No streaming calibration** — plug pen into laptop, copy-paste codes from terminal into website. Simpler and already works.
-- **localStorage for anonymous favs** — users without a globe get browser-local favourites only; no backend needed.
-- **GitHub as database** — PAT in localStorage, no backend server. Fine for solo development; would need a proxy for multi-user.
-- **Concurrent writes:** two devices writing at the same moment cause a 409 SHA mismatch — acceptable for solo use.
+- **Oregon Scientific Horizon** — not VTech, not VTech XL
+- **No streaming calibration** — plug pen into laptop, copy-paste codes from terminal
+- **localStorage for anonymous favs** — no backend needed for public users
+- **Atomic CSV/JSON writes** — write to `.tmp` then `os.replace()` to prevent data loss
+- **Debounce fix** — same-country re-tap uses `and` not `or`
+- **admin.py serves index.html directly** — one URL for everything
+- **3-tier access** — Public / Globe owner (auto) / Developer (PIN) — no accounts needed
+- **favourites.json** — shared file between globe.py and admin.py, bootstrapped from CSV on first run
