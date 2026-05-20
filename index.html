@@ -2877,8 +2877,15 @@ function toggleSbSection(which) {
 }
 
 async function loadZonesAndPresets() {
+  const zEl = document.getElementById('zones-list');
+  const pEl = document.getElementById('presets-list');
   const data = await piGet('/api/zones');
-  if (!data) return;
+  if (!data) {
+    const retry = `<button onclick="loadZonesAndPresets()" style="margin-top:6px;font-size:11px;padding:2px 8px;cursor:pointer">Retry</button>`;
+    if (zEl) zEl.innerHTML = `<p class="sc" style="color:var(--red)">Could not reach Pi. ${retry}</p>`;
+    if (pEl) pEl.innerHTML = `<p class="sc" style="color:var(--red)">Could not reach Pi. ${retry}</p>`;
+    return;
+  }
   _zonesData   = data.zones   || [];
   _presetsData = data.presets || [];
   renderZones();
