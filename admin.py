@@ -298,16 +298,19 @@ def api_zones_post():
 
 @app.put("/api/zones/<code>")
 def api_zones_put(code):
-    """Update label, description, position for a zone by code."""
+    """Update any field (including code and action) for a zone."""
     data = read_actions()
     zones = data.get("zones", [])
     zone = next((z for z in zones if z["code"] == code), None)
     if zone is None:
         abort(404)
     body = request.json or {}
-    for field in ("label", "description", "position"):
+    for field in ("label", "description", "position", "action"):
         if field in body:
             zone[field] = body[field]
+    # Allow renaming the code itself
+    if "new_code" in body and body["new_code"].strip():
+        zone["code"] = body["new_code"].strip()
     write_actions(data)
     _notify_globe()
     return jsonify({"ok": True})
