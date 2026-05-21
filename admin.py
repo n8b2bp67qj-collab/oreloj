@@ -25,6 +25,7 @@ STATIONS_CSV     = SCRIPT_DIR / "stations.csv"
 FAVS_PATH        = SCRIPT_DIR / "favourites.json"
 ACTIONS_FILE     = SCRIPT_DIR / "actions.json"
 CALIBRATION_CSV  = SCRIPT_DIR / "calibration.csv"
+VOLUME_FILE      = SCRIPT_DIR / "volume.json"
 CAL_FIELDS       = ["code", "country_iso", "country_name", "region", "lat", "lng"]
 CSV_FIELDS   = ["Continent", "Country", "City", "Radio Station",
                  "Description", "Website", "URL Link", "Favourite"]
@@ -123,10 +124,20 @@ def write_csv(rows: list) -> None:
 
 
 def _mpv_set_volume(level: int) -> None:
-    """Best-effort: set system output volume via PulseAudio/PipeWire or ALSA."""
-    rc, _ = _run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", f"{level}%"])
-    if rc != 0:
-        _run(["amixer", "-q", "sset", "Master", f"{level}%"])
+    """Persist volume to volume.json and best-effort send to the running mpv socket."""
+    level = max(0, min(100, level))
+    try:
+        VOLUME_FILE.write_text(json.dumps(level), encoding="utf-8")
+    except Exception:
+        pass
+    try:
+        import socket as _socket
+        with _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM) as s:
+            s.settimeout(0.3)
+            s.connect("/tmp/globe-mpv.sock")
+            s.sendall((json.dumps({"command": ["set_property", "volume", level]}) + "\n").encode())
+    except Exception:
+        pass
 
 
 def _notify_globe() -> None:

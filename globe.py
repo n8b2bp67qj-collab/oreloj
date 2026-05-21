@@ -51,6 +51,7 @@ log = logging.getLogger("globe")
 CODE_MAP: dict[str, list[list]] = {}
 
 CALIBRATION_CSV_PATH = SCRIPT_DIR / "calibration.csv"
+VOLUME_FILE          = SCRIPT_DIR / "volume.json"
 
 
 def load_calibration() -> None:
@@ -88,7 +89,20 @@ def load_calibration() -> None:
 # Format: {"a0xxxf": "favourite_toggle", ...}
 ACTION_MAP: dict[str, str] = {}
 PRESET_MAP: dict[int, dict] = {}   # slot (1-6) → {name, url, label}
-_current_volume: int = 80
+
+def _volume_init() -> int:
+    try:
+        return max(0, min(100, int(json.loads(VOLUME_FILE.read_text(encoding="utf-8")))))
+    except Exception:
+        return 80
+
+def _write_volume(vol: int) -> None:
+    try:
+        VOLUME_FILE.write_text(json.dumps(vol), encoding="utf-8")
+    except Exception:
+        pass
+
+_current_volume: int = _volume_init()
 
 def load_actions() -> None:
     if not ACTIONS_FILE.exists():
@@ -342,7 +356,7 @@ def speak(text: str) -> None:
     except FileNotFoundError:
         log.warning(f"TTS not available (tried {'say' if OS == 'Darwin' else 'espeak-ng'})")
     if playing:
-        _mpv_set_volume(100)
+        _mpv_set_volume(_current_volume)
 
 
 # ── Favourite toggle ──────────────────────────────────────────────────────────
@@ -419,12 +433,14 @@ def dispatch_action(action: str, curated: dict[str, list[dict]]) -> None:
     elif action == "volume_up":
         _current_volume = min(100, _current_volume + 10)
         _mpv_set_volume(_current_volume)
+        _write_volume(_current_volume)
         speak("volume up")
         log.info(f"Volume → {_current_volume}")
 
     elif action == "volume_down":
         _current_volume = max(0, _current_volume - 10)
         _mpv_set_volume(_current_volume)
+        _write_volume(_current_volume)
         speak("volume down")
         log.info(f"Volume → {_current_volume}")
 
