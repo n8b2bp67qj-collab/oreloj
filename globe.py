@@ -540,10 +540,10 @@ def calibrate() -> None:
     print(f"\n── Done — {total} tap(s) on {len(tap_count)} unique code(s) ──")
 
     if unknowns:
-        print(f"\n⚠  {len(unknowns)} unknown code(s) — fill in and paste into CODE_MAP in globe.py:\n")
+        print(f"\n⚠  {len(unknowns)} unknown code(s) — add to calibration.csv or assign via the admin UI (Calibration panel):\n")
         for code in unknowns:
             n = tap_count[code]
-            print(f'    "{code}": [["COUNTRY_NAME", "XX", None, None, None]],  # tapped ×{n}')
+            print(f'    {code},XX,Country Name,,,  # tapped ×{n}')
         print()
     else:
         print("All codes recognised. ✓\n")
