@@ -477,6 +477,27 @@ audio { display: none; }
   letter-spacing: .3px; white-space: nowrap; flex-shrink: 0;
   border: 1px dashed rgba(212,167,43,0.4); padding: 4px 8px; border-radius: 2px;
 }
+#update-banner {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  font-family: 'Space Mono', monospace;
+  color: var(--text);
+  background: var(--bg);
+  letter-spacing: .04em;
+  flex-shrink: 0;
+}
+#update-banner button {
+  font-size: 9px;
+  font-family: 'Space Mono', monospace;
+  padding: 3px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
 </style>
 </head>
 <body>
@@ -512,6 +533,10 @@ audio { display: none; }
   <div id="sidebar">
     <div id="sw"><input type="text" id="search" placeholder="search stations…" oninput="renderList()"></div>
     <div id="sidebar-scroll">
+      <div id="update-banner">
+        <span>▲ update available</span>
+        <button onclick="sysUpdate()">update now</button>
+      </div>
       <div id="list"></div>
 
       <!-- ── Zones section ── -->
@@ -1893,7 +1918,10 @@ async function syncFromPi() {
   // Fetch Pi favourites — merge into localStorage set (union, Pi wins additions)
   const piData = await piGet('/api/favourites');
   // Pi responded → Globe Owner tier
-  if (piData !== null && accessTier < 2) applyTier(2);
+  if (piData !== null && accessTier < 2) {
+    applyTier(2);
+    checkForUpdates();  // silently check if GitHub is ahead of the Pi
+  }
   const piFavs = piData?.favourites ?? (Array.isArray(piData) ? piData : null);
   if (Array.isArray(piFavs)) {
     for (const name of piFavs) favs.add(name);
@@ -3669,6 +3697,34 @@ async function sysWifiConnect(btn) {
 }
 
 // Update
+async function checkForUpdates() {
+  // Compare Pi's deployment time (admin.py mtime) against GitHub's latest commit.
+  // Only runs on oreloj.local (Globe Owner tier), silently no-ops on the public site.
+  try {
+    const status = await piGet('/api/status');
+    if (!status || !status.build_time || status.build_time === 'unknown') return;
+    const piTime = new Date(status.build_time);
+    if (isNaN(piTime)) return;
+
+    const ghResp = await fetch(
+      'https://api.github.com/repos/n8b2bp67qj-collab/oreloj/commits?per_page=1',
+      { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+    );
+    if (!ghResp.ok) return;
+    const ghData = await ghResp.json();
+    const ghTime = new Date(ghData?.[0]?.commit?.committer?.date);
+    if (isNaN(ghTime)) return;
+
+    const banner = document.getElementById('update-banner');
+    if (!banner) return;
+    if (ghTime > piTime) {
+      banner.style.display = 'flex';
+    } else {
+      banner.style.display = 'none';
+    }
+  } catch(e) { /* offline or rate-limited — stay silent */ }
+}
+
 async function sysUpdate() {
   const btn = document.getElementById('sys-update-btn');
   const out = document.getElementById('sys-upd-out');
