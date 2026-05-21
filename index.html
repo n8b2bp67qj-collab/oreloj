@@ -1089,7 +1089,7 @@ async function ghLoadStations() {
   for (let i = 1; i < lines.length; i++) {
     const c = _parseCsvLine(lines[i]);
     if (c.length < 7) continue;
-    const [, country, city, name, desc, web, stream, fav] = c;
+    const [, country, city, name, desc, web, stream, fav, rawLat, rawLng] = c;
     if (!name || !stream) continue;
     if (builtinUrls.has(stream) || builtinNames.has(name)) {
       if (fav === 'yes' || fav === 'TRUE' || fav === 'true') { favs.add(name); changed = true; }
@@ -1099,9 +1099,12 @@ async function ghLoadStations() {
       if (fav === 'yes' || fav === 'TRUE' || fav === 'true') { favs.add(name); changed = true; }
       continue;
     }
-    // Try to place station at a sensible position — check BUILT_IN first, then country center fallback
-    const builtinMatch = BUILT_IN.find(b => b.name === name);
-    let lat = builtinMatch?.lat || 0, lng = builtinMatch?.lng || 0;
+    // Prefer exact lat/lng from CSV, then BUILT_IN match, then country-center fallback
+    let lat = parseFloat(rawLat) || 0, lng = parseFloat(rawLng) || 0;
+    if (!lat && !lng) {
+      const builtinMatch = BUILT_IN.find(b => b.name === name);
+      lat = builtinMatch?.lat || 0; lng = builtinMatch?.lng || 0;
+    }
     if (!lat && !lng) {
       const cc = _COUNTRY_CENTERS[country] || _COUNTRY_CENTERS[(country||'').toLowerCase()];
       if (cc) { lat = cc[0]; lng = cc[1]; }
@@ -1948,6 +1951,8 @@ function saveStation() {
       'Website':       ns.web,
       'URL Link':      ns.stream,
       'Favourite':     '',
+      'Lat':           ns.lat || '',
+      'Lng':           ns.lng || '',
     });
   }
   rebuildStations();
@@ -2003,12 +2008,17 @@ async function syncFromPi() {
     for (const ps of piStations) {
       if (!ps.name || !ps.stream) continue;
       if (existingNames.has(ps.name)) continue;
+      let psLat = ps.lat || 0, psLng = ps.lng || 0;
+      if (!psLat && !psLng) {
+        const cc = _COUNTRY_CENTERS[ps.country] || _COUNTRY_CENTERS[(ps.country||'').toLowerCase()];
+        if (cc) { psLat = cc[0]; psLng = cc[1]; }
+      }
       custom.push({
         name:    ps.name,
         city:    ps.city    || 'Unknown',
         country: ps.country || 'Unknown',
-        lat:     0,
-        lng:     0,
+        lat:     psLat,
+        lng:     psLng,
         stream:  ps.stream,
         web:     ps.web  || '',
         desc:    ps.desc || 'Pi-synced station.',
@@ -2781,14 +2791,14 @@ function buildRadioJsSnippet() {
 }
 
 function buildRadioCsv() {
-  const header = ['Continent','Country','City','Radio Station','Description','Website','URL Link','Favourite'];
+  const header = ['Continent','Country','City','Radio Station','Description','Website','URL Link','Favourite','Lat','Lng'];
   const rows = [header.join(',')];
   for (const s of stations) {
     const iso = STATION_COUNTRY_TO_ISO[(s.country || '').toLowerCase()] || null;
     let continent = ISO_TO_CONTINENT[iso] || '';
     if (!continent && s.country === 'Global') continent = 'Global';
     const fav = favs.has(s.name) ? 'yes' : '';
-    rows.push([continent, s.country, s.city, s.name, s.desc || '', s.web || '', s.stream || '', fav].map(csvEscape).join(','));
+    rows.push([continent, s.country, s.city, s.name, s.desc || '', s.web || '', s.stream || '', fav, s.lat || '', s.lng || ''].map(csvEscape).join(','));
   }
   return rows.join('\n') + '\n';
 }
