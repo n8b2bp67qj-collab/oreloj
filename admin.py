@@ -27,7 +27,7 @@ ACTIONS_FILE     = SCRIPT_DIR / "actions.json"
 CALIBRATION_CSV  = SCRIPT_DIR / "calibration.csv"
 CAL_FIELDS       = ["code", "country_iso", "country_name", "region", "lat", "lng"]
 CSV_FIELDS   = ["Continent", "Country", "City", "Radio Station",
-                 "Description", "Website", "URL Link", "Favourite"]
+                 "Description", "Website", "URL Link", "Favourite", "Lat", "Lng"]
 
 # Set this to the raw GitHub URL of stations.csv once it's committed to the
 # human-ears repo, e.g.:
@@ -227,6 +227,8 @@ def api_stations_json():
             "web":       r.get("Website", ""),
             "desc":      r.get("Description", ""),
             "continent": r.get("Continent", ""),
+            "lat":       float(r["Lat"])  if r.get("Lat")  else 0,
+            "lng":       float(r["Lng"])  if r.get("Lng")  else 0,
         }
         for r in rows
     ])
