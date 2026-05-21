@@ -8,11 +8,19 @@ Run:      python3 ~/globe/admin.py
 Access:   http://oreloj.local:5000
 """
 
-import csv, io, json, os, re, select, subprocess, threading, time, urllib.request
+import csv, datetime, io, json, os, re, select, subprocess, threading, time, urllib.request
 from pathlib import Path
 from flask import Flask, send_file, jsonify, request, abort, redirect
 
 SCRIPT_DIR       = Path(__file__).parent
+
+def _build_time() -> str:
+    """mtime of this file as ISO-8601 UTC — updated whenever the file is deployed via scp."""
+    try:
+        ts = Path(__file__).stat().st_mtime
+        return datetime.datetime.utcfromtimestamp(ts).strftime('%Y-%m-%dT%H:%M:%SZ')
+    except Exception:
+        return "unknown"
 STATIONS_CSV     = SCRIPT_DIR / "stations.csv"
 FAVS_PATH        = SCRIPT_DIR / "favourites.json"
 ACTIONS_FILE     = SCRIPT_DIR / "actions.json"
@@ -161,7 +169,7 @@ def api_status():
                 break
 
     return jsonify({"playing": playing, "bt": bt, "wifi": wifi,
-                    "hotspot_mode": hotspot_mode})
+                    "hotspot_mode": hotspot_mode, "build_time": _build_time()})
 
 
 # ── API: stations ─────────────────────────────────────────────────────────────
