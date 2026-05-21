@@ -1096,6 +1096,12 @@ async function ghLoadStations() {
       continue;
     }
     if (existingUrls.has(stream)) {
+      // Update coords if CSV has better (more precise) ones than what's cached in localStorage
+      const csvLat = parseFloat(rawLat) || 0, csvLng = parseFloat(rawLng) || 0;
+      if (csvLat || csvLng) {
+        const ex = custom.find(s => s.stream === stream);
+        if (ex && (ex.lat !== csvLat || ex.lng !== csvLng)) { ex.lat = csvLat; ex.lng = csvLng; changed = true; }
+      }
       if (fav === 'yes' || fav === 'TRUE' || fav === 'true') { favs.add(name); changed = true; }
       continue;
     }
@@ -2007,7 +2013,14 @@ async function syncFromPi() {
     let added = 0;
     for (const ps of piStations) {
       if (!ps.name || !ps.stream) continue;
-      if (existingNames.has(ps.name)) continue;
+      if (existingNames.has(ps.name)) {
+        // Update coords if Pi has better ones than what's cached in localStorage
+        if (ps.lat || ps.lng) {
+          const ex = custom.find(s => s.name === ps.name);
+          if (ex && (ex.lat !== (ps.lat||0) || ex.lng !== (ps.lng||0))) { ex.lat = ps.lat||0; ex.lng = ps.lng||0; added++; }
+        }
+        continue;
+      }
       let psLat = ps.lat || 0, psLng = ps.lng || 0;
       if (!psLat && !psLng) {
         const cc = _COUNTRY_CENTERS[ps.country] || _COUNTRY_CENTERS[(ps.country||'').toLowerCase()];
