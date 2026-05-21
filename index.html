@@ -1352,7 +1352,10 @@ function rebuildStations() {
     if (hiddenBuiltIns.has(b.name)) continue;
     visible.push(builtinOverrides[b.name] || b);
   }
-  stations = [...visible, ...custom];
+  // Exclude custom entries whose name is already in BUILT_IN — prevents duplicate
+  // map markers when a station was Pi-synced before being added to BUILT_IN.
+  const builtinNames = new Set(BUILT_IN.map(b => b.name));
+  stations = [...visible, ...custom.filter(c => !builtinNames.has(c.name))];
 }
 rebuildStations();
 
