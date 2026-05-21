@@ -16,7 +16,7 @@ Europe,Ireland,Dublin,Dublin Digital Radio,"Ireland's independent underground st
 Europe,France,Paris,FIP,"France's most eclectic radio. Jazz, soul, world — no genre barriers, no ads. An institution.",https://radiofrance.fr/fip,https://icecast.radiofrance.fr/fip-midfi.mp3,
 Europe,France,Paris,Radio Nova,"World beats, funk, soul and creative music. Shaping French culture since 1981.",https://nova.fr,https://novazz.ice.infomaniak.ch/novazz-128.mp3,
 Europe,France,Montpellier,Pinata Radio,Montpellier's colourful independent radio. Eclectic electronic music and festive vibes from the South.,https://pinataradio.com,,
-Europe,France,Lyon,LYL Radio,"Lyon's cult independent station. Disco, experimental, techno and world — live since 2018.",https://lyl.live,https://icecast.lyl.live/live,
+Europe,France,Lyon,LYL Radio,"Lyon's cult independent station. Disco, experimental, techno and world — live since 2018.",https://lyl.live,https://icecast.lyl.live/live,yes
 Europe,France,Grenoble,RTL3,"Radio indépendante au Couvent des Minimes, Grenoble. Musiques électroniques et scène locale alpine.",https://rtl3.fr,https://rtl3.radiocult.fm/stream,
 Europe,France,Paris,Le Mellotron,"Parisian global music radio since 2007. Soul, jazz, funk, world — always exigeant.",https://lemellotron.com,,
 Europe,France,Annecy,Radio Meuh,"Electronic, soul and funk from the French Alps. Independent and joyful since 2001.",https://radiomeuh.com,,
@@ -34,7 +34,7 @@ Europe,Germany,Munich,Radio 80000,Munich's independent underground station. Elec
 Europe,Germany,Berlin,Reboot FM,"Free artist radio from Berlin. Art, discourse and electronic music since 2005.",https://reboot.fm,,
 Europe,Germany,Berlin,Refuge Worldwide,Community radio from Berlin-Neukölln in solidarity with grassroots organisations.,https://refugeworldwide.com,,yes
 Europe,Germany,Halle,Radio Corax,Free non-commercial radio from Halle. 300 volunteer contributors.,https://radiocorax.de,,
-Europe,Portugal,Lisbon,Rádio Quântica,Lisbon's community radio since 2015. Safe haven for underground artists and activists.,https://radioquantica.com,https://libretime.radioquantica.com/main.mp3,
+Europe,Portugal,Lisbon,Rádio Quântica,Lisbon's community radio since 2015. Safe haven for underground artists and activists.,https://radioquantica.com,https://libretime.radioquantica.com/main.mp3,yes
 Europe,Italy,Milan,Radio Raheem,Milan's cosmopolitan independent radio. A richly curated journey across all genres.,https://radioraheem.it,,
 Europe,Italy,Bologna,NEU Radio,"Bologna's cultural hub radio. Afrobeats to indie rock, always with an Italian edge.",https://neu.radio,,
 Europe,Poland,Warsaw,Radio Kapitał,Warsaw's experimental community radio. Avant-garde and Polish underground since 2019.,https://radiokapital.pl,,
