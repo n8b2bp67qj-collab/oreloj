@@ -20,3 +20,10 @@ SESSION_RECAP*.md
 PROJECT_REVIEW.html
 admin_preview.html
 setup-card.html
+
+# Claude Cowork session data
+.claude/
+*.skill
+
+# Runtime data (auto-generated, not versioned)
+favourites.json
