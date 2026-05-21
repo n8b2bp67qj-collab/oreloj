@@ -2274,11 +2274,9 @@ async function loadCalibrationFromPi() {
         if (!_calMap[r.code]) _calMap[r.code] = [];
         _calMap[r.code].push(entry);
       }
-      console.log('[cal] loaded', Object.keys(_calMap).length, 'pen codes from /api/calibration');
     } else {
       // Fallback to hardcoded map
       _calMap = Object.assign({}, PEN_CODE_MAP);
-      console.log('[cal] fallback to PEN_CODE_MAP');
     }
   } else {
     // Public site — use hardcoded map
@@ -2738,11 +2736,11 @@ function downloadFile(text, filename, mime) {
 
 function downloadPenCsv() {
   const ts = new Date().toISOString().slice(0, 10);
-  downloadFile(buildPenCsv(), `oreilles-fm_pen-mappings_${ts}.csv`, 'text/csv');
+  downloadFile(buildPenCsv(), `oreloj_pen-mappings_${ts}.csv`, 'text/csv');
 }
 function downloadRadioCsv() {
   const ts = new Date().toISOString().slice(0, 10);
-  downloadFile(buildRadioCsv(), `oreilles-fm_radio-stations_${ts}.csv`, 'text/csv');
+  downloadFile(buildRadioCsv(), `oreloj_radio-stations_${ts}.csv`, 'text/csv');
 }
 
 function copyExport(elemId, btn) {
@@ -2875,20 +2873,17 @@ async function handlePenCode(code) {
   // Action zone — handled by Pi only; show a brief note and open assign popup
   // so the user can reconfigure if needed (one click on the pen pill reopens it).
   if (userActionMap[code]) {
-    console.log('[pen] action zone:', code, '→', userActionMap[code]);
     document.getElementById('pmeta').textContent = `⚡ action zone: ${userActionMap[code]}`;
     return;
   }
 
   const resolved = resolvePenCode(code);
   if (!resolved) {
-    console.log('[pen] unknown code:', code);
     document.getElementById('pmeta').textContent = `🤷 unknown pen code: ${code} — pick a country`;
     openAssignPopup(code);
     return;
   }
   const [country, iso, region, regionLat, regionLng] = resolved;
-  console.log('[pen]', code, '→', country, `(${iso})${region ? ' · '+region : ''}`);
 
   // 1. Dim previous radio (~-20 dB) so the country announcement is hearable.
   dimForAnnouncement();

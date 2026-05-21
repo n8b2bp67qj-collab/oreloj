@@ -30,16 +30,11 @@ CAL_FIELDS       = ["code", "country_iso", "country_name", "region", "lat", "lng
 CSV_FIELDS   = ["Continent", "Country", "City", "Radio Station",
                  "Description", "Website", "URL Link", "Favourite"]
 
-# Set this to the raw GitHub URL of stations.csv once it's committed to the
-# human-ears repo, e.g.:
-#   "https://raw.githubusercontent.com/<username>/human-ears/main/stations.csv"
-# The Sync button in the UI calls /api/sync which fetches from this URL.
+# Raw GitHub URL for stations.csv — used by /api/sync to pull remote updates.
+# e.g.: "https://raw.githubusercontent.com/n8b2bp67qj-collab/oreloj/main/stations.csv"
 SYNC_URL = ""
 
-# Set this to the SSH remote or HTTPS URL of the globe repo once it's on GitHub,
-# e.g. "https://github.com/<username>/oreloj.git"
-# (Only needed for documentation/reference — the update endpoint uses `git pull`
-# directly on the Pi's local clone at ~/globe.)
+# Not used at runtime — /api/update runs `git pull` on ~/globe directly.
 REPO_URL = ""
 
 app = Flask(__name__)
@@ -441,10 +436,8 @@ def api_calibration_post():
     # Check for conflict: code already mapped to a DIFFERENT country_iso
     for r in rows:
         if r["code"] == code and r["country_iso"].upper() != country_iso:
-            # It's a conflict only if it's not the same row being updated
-            if not (r["code"] == code and r["country_iso"].upper() == country_iso and r.get("region", "") == region):
-                return jsonify({"ok": False, "conflict": True,
-                                "existing": r["country_name"]}), 409
+            return jsonify({"ok": False, "conflict": True,
+                            "existing": r["country_name"]}), 409
 
     # Find existing row for this code+iso+region triple and update it,
     # or append a new row.

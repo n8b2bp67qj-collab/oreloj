@@ -5,7 +5,7 @@
 # Tap an action zone → execute action (e.g. favourite toggle) with TTS feedback.
 # Usage: python3 globe.py [--calibrate]
 
-import sys, csv, queue, time, signal, random, logging, subprocess, requests, platform, threading, json, tempfile, os
+import sys, csv, queue, time, signal, random, logging, subprocess, requests, platform, threading, json
 from pathlib import Path
 
 OS = platform.system()   # 'Darwin' on Mac, 'Linux' on Pi
@@ -225,7 +225,7 @@ def _bootstrap_favs_from_csv() -> None:
                     if name:
                         favs.append(name)
         FAVS_PATH.write_text(
-            __import__("json").dumps(favs, ensure_ascii=False, indent=2),
+            json.dumps(favs, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
         log.info(f"Bootstrapped favourites.json from CSV ({len(favs)} favourite(s))")
@@ -235,15 +235,14 @@ def _bootstrap_favs_from_csv() -> None:
 
 def _read_favs() -> set[str]:
     try:
-        return set(__import__("json").loads(FAVS_PATH.read_text(encoding="utf-8")))
+        return set(json.loads(FAVS_PATH.read_text(encoding="utf-8")))
     except Exception:
         return set()
 
 
 def _write_favs(names: set[str]) -> None:
-    import json as _json
     tmp = Path(str(FAVS_PATH) + ".tmp")
-    tmp.write_text(_json.dumps(sorted(names), ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.write_text(json.dumps(sorted(names), ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(FAVS_PATH)
 
 
@@ -335,11 +334,11 @@ def stop() -> None:
 # ── Volume control via mpv IPC ────────────────────────────────────────────────
 def _mpv_set_volume(vol: int) -> None:
     try:
-        import socket as _socket, json as _json
+        import socket as _socket
         with _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM) as s:
             s.settimeout(0.3)
             s.connect(MPV_SOCKET)
-            s.sendall((_json.dumps({"command": ["set_property", "volume", vol]}) + "\n").encode())
+            s.sendall((json.dumps({"command": ["set_property", "volume", vol]}) + "\n").encode())
     except Exception:
         pass
 
