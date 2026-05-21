@@ -14,8 +14,7 @@ Europe,UK,London,Do!! You!!! Radio,London community radio where music discovery 
 Europe,UK,Glasgow,Subcity Radio,Independent station from the University of Glasgow. Student-run and fiercely non-commercial since 1996.,https://subcity.org,,
 Europe,Ireland,Dublin,Dublin Digital Radio,"Ireland's independent underground station. Arts, music and community from the Irish capital.",https://www.dublindigitalradio.com,,
 Europe,France,Paris,FIP,"France's most eclectic radio. Jazz, soul, world — no genre barriers, no ads. An institution.",https://radiofrance.fr/fip,https://icecast.radiofrance.fr/fip-midfi.mp3,
-Europe,France,Paris,Radio Nova,"World beats, funk, soul and creative music. Shaping French culture since 1981.",https://nova.fr,https://novazz.ice.infomaniak.ch/novazz-128.mp3,
-Europe,France,Montpellier,Pinata Radio,Montpellier's colourful independent radio. Eclectic electronic music and festive vibes from the South.,https://pinataradio.com,,
+Europe,France,Montpellier,Pinata Radio,Montpellier's colourful independent radio. Eclectic electronic music and festive vibes from the South.,https://pinataradio.com,https://listen.radioking.com/radio/96031/stream/906306,
 Europe,France,Lyon,LYL Radio,"Lyon's cult independent station. Disco, experimental, techno and world — live since 2018.",https://lyl.live,https://icecast.lyl.live/live,yes
 Europe,France,Grenoble,RTL3,"Radio indépendante au Couvent des Minimes, Grenoble. Musiques électroniques et scène locale alpine.",https://rtl3.fr,https://rtl3.radiocult.fm/stream,
 Europe,France,Paris,Le Mellotron,"Parisian global music radio since 2007. Soul, jazz, funk, world — always exigeant.",https://lemellotron.com,,
@@ -23,7 +22,6 @@ Europe,France,Annecy,Radio Meuh,"Electronic, soul and funk from the French Alps.
 Europe,France,Nantes,Radio DY10,"Nantes-based station. Balearic, tropical sounds, dance music and trippy electronic.",https://radiody10.com,,
 Europe,France,Paris,Let Him Cook,Artists mix live inside a real restaurant kitchen. Music fused with working service energy.,https://lethimcook.radio,,
 Europe,France,Marseille,Radio Grenouille,"Marseille's eclectic free radio since 1981. World music, jazz and Mediterranean culture.",https://radiogrenouille.com,,
-Europe,France,Paris,Cinemix,Radio dedicated to film and TV soundtracks. Future classics and golden-era scores.,https://cinemix.us,,
 Europe,Belgium,Brussels,Kiosk Radio,"Brussels' eclectic broadcast from the Bozar kiosk. Community, arts and rare sounds.",https://kioskradio.com,,yes
 Europe,Belgium,Antwerp,Radio Centraal,Community radio from Antwerp since 1980. One of Belgium's oldest independent stations.,https://radiocentraal.be,,
 Europe,Netherlands,Amsterdam,Red Light Radio,"Amsterdam's underground electronic station. Live sets from the city's best DJs, every day.",https://redlightradio.net,,
