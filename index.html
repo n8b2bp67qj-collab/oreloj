@@ -925,9 +925,9 @@ function applyTier(tier) {
   // Tier 2+: show zones / presets / system; hide otherwise
   if (tier >= 2) { show('zones-section'); show('presets-section'); show('actions-section'); show('system-section'); }
   else           { hide('zones-section'); hide('presets-section'); hide('actions-section'); hide('system-section'); }
-  // Tier 3 only: show developer section + dev badge
-  if (tier >= 3) { show('dev-section'); show('badge-dev'); }
-  else           { hide('dev-section'); hide('badge-dev'); }
+  // Tier 3 only: show developer section + dev badge + export button
+  if (tier >= 3) { show('dev-section'); show('badge-dev'); show('exportbtn'); }
+  else           { hide('dev-section'); hide('badge-dev'); hide('exportbtn'); }
   // Globe badge: visible at tier 2+
   if (tier >= 2) show('badge-globe');
   else           hide('badge-globe');
