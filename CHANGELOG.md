@@ -5,6 +5,19 @@ Format: [date] — what changed and why.
 
 ---
 
+## 2026-05-25
+
+### Added
+- **Volume persistence** (`globe.py`) — `_current_volume` is now saved to `volume.json` on every change and loaded at startup. Volume no longer resets to 80 after a service restart.
+- **"Stream lost" detection** (`globe.py`) — the main loop now monitors mpv every second. If mpv exits unexpectedly (station offline, network drop), globe.py speaks "stream lost" via TTS and clears the playback state cleanly.
+- **Local D3 + topojson** (`d3.min.js`, `topojson-client.min.js`) — downloaded and bundled with the project (273 KB + 7 KB). Globe map now renders fully offline without depending on unpkg CDN.
+
+### Changed
+- **`admin.service` converted to user systemd unit** — was a system service (`User=oreloj`, `WantedBy=multi-user.target`), now matches `globe.service` style (`%h` paths, `WantedBy=default.target`). Installed on Pi at `~/.config/systemd/user/admin.service`, enabled for boot, replaces the previous bare-process approach. Admin UI now auto-restarts on crash.
+- **`index.html` script tags** — `<script src="d3.min.js">` and `<script src="topojson-client.min.js">` (local paths, no CDN).
+
+---
+
 ## 2026-05-24
 
 ### Added
