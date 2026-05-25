@@ -282,6 +282,12 @@ body {
   padding: 2px 4px; transition: color .15s;
 }
 #popup-close:hover { color: var(--text); }
+.pop-preset-picker { display:none; margin-bottom:8px; }
+.pop-preset-picker.open { display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+.pop-preset-picker .ppp-label { font-size:9px; color:var(--muted); margin-right:2px; white-space:nowrap; }
+.pop-preset-slot { background:none; border:1px solid var(--border); color:var(--muted); cursor:pointer; font-family:'Space Mono',monospace; font-size:10px; padding:2px 6px; transition:color .12s,border-color .12s; }
+.pop-preset-slot:hover { color:var(--text); border-color:var(--text); }
+.pop-preset-confirm { font-size:9px; color:#7db87d; font-style:italic; display:none; }
 
 /* ── Modal ── */
 #modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.8); z-index: 9999; display: none; align-items: center; justify-content: center; }
@@ -1661,6 +1667,12 @@ function openPopup(idx) {
   const safeName = s.name.replace(/'/g,"\\'");
   // Edit icon shown for all stations (built-ins editable via override, deletable via hide flag)
   const editBtn = `<button class="pop-icon" onclick="openModalEdit('${safeName}')" title="Edit / delete">✎</button>`;
+  const presetBtn = accessTier >= 2
+    ? `<button class="pop-icon" onclick="togglePopPresetPicker()" title="Save to preset">📌</button>`
+    : '';
+  const presetSlots = [1,2,3,4,5,6].map(n =>
+    `<button class="pop-preset-slot" onclick="assignToPreset(${n})">${n}</button>`
+  ).join('');
   document.getElementById('popup-inner').innerHTML = `
     <div class="pop-header">
       <div class="pop-name">${s.name}</div>
@@ -1669,6 +1681,12 @@ function openPopup(idx) {
       <div class="pop-loc">${s.city}, ${s.country}</div>
       ${editBtn}
       <button class="pop-icon heart ${isFav?'on':''}" onclick="toggleFav('${safeName}')" title="${isFav?'Remove from favourites':'Add to favourites'}">${isFav?'♥':'♡'}</button>
+      ${presetBtn}
+    </div>
+    <div class="pop-preset-picker" id="pop-preset-picker">
+      <span class="ppp-label">preset:</span>
+      ${presetSlots}
+      <span class="pop-preset-confirm" id="pop-preset-confirm"></span>
     </div>
     <div class="pop-desc">${s.desc}</div>
     ${webStr}
@@ -1706,6 +1724,35 @@ function positionPopup() {
 function closePopup() {
   document.getElementById('popup').style.display = 'none';
   openStation = null; openIdx = null; drawGlobe();
+}
+
+function togglePopPresetPicker() {
+  const picker = document.getElementById('pop-preset-picker');
+  if (picker) picker.classList.toggle('open');
+}
+
+async function assignToPreset(slot) {
+  if (!openStation) return;
+  const confirm = document.getElementById('pop-preset-confirm');
+  try {
+    const r = await fetch(PI_BASE + `/api/presets/${slot}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: openStation.name, url: openStation.stream }),
+    });
+    if (r.ok) {
+      await loadZonesAndPresets();
+      if (confirm) { confirm.textContent = `→ preset ${slot}`; confirm.style.display = 'inline'; }
+      setTimeout(() => {
+        const picker = document.getElementById('pop-preset-picker');
+        if (picker) picker.classList.remove('open');
+        if (confirm) { confirm.style.display = 'none'; confirm.textContent = ''; }
+      }, 1500);
+    }
+  } catch (_) {
+    if (confirm) { confirm.textContent = 'Pi offline'; confirm.style.display = 'inline'; }
+    setTimeout(() => { if (confirm) { confirm.style.display = 'none'; confirm.textContent = ''; } }, 2000);
+  }
 }
 
 // ── Globe interaction ──────────────────────────────────────────────────────
