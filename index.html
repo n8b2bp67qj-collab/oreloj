@@ -534,8 +534,8 @@ audio { display: none; }
     <div id="sw"><input type="text" id="search" placeholder="search stations…" oninput="renderList()"></div>
     <div id="sidebar-scroll">
       <div id="update-banner">
-        <span id="update-banner-text">▲ update available</span>
-        <button id="update-banner-btn" onclick="sysUpdate()">update now</button>
+        <span>▲ update available</span>
+        <button onclick="sysUpdate()">update now</button>
       </div>
       <div id="list"></div>
 
@@ -877,8 +877,8 @@ audio { display: none; }
   </div>
 </div>
 
-<script src="d3.min.js"></script>
-<script src="topojson-client.min.js"></script>
+<script src="https://unpkg.com/d3@7/dist/d3.min.js"></script>
+<script src="https://unpkg.com/topojson-client@3/dist/topojson-client.min.js"></script>
 <script>
 // ── Pi API helpers ────────────────────────────────────────────────────────
 // PI_BASE is '' when running on the Pi itself (oreloj.local), otherwise
@@ -903,20 +903,6 @@ async function piPost(path, body) {
     const timer = setTimeout(() => ctrl.abort(), 2000);
     await fetch(PI_BASE + path, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: ctrl.signal,
-    });
-    clearTimeout(timer);
-  } catch (e) { /* best-effort, silent fail */ }
-}
-
-async function piDelete(path, body) {
-  try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 2000);
-    await fetch(PI_BASE + path, {
-      method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
       signal: ctrl.signal,
@@ -1946,7 +1932,7 @@ function saveStation() {
   };
   if (editingName && editingType === 'custom') {
     const i = custom.findIndex(c => c.name === editingName);
-    if (i >= 0) { const prev = custom[i]; ns._piOrigin = prev._piOrigin; custom[i] = ns; }
+    if (i >= 0) custom[i] = ns;
     if (editingName !== name) deadStations.delete(editingName);
     localStorage.setItem('rw_custom', JSON.stringify(custom));
   } else if (editingName && editingType === 'builtin') {
@@ -1964,20 +1950,20 @@ function saveStation() {
     }
     custom.push(ns);
     localStorage.setItem('rw_custom', JSON.stringify(custom));
+    // Sync new station to Pi — best-effort, fire-and-forget
+    piPost('/api/stations', {
+      'Continent':     '',
+      'Country':       ns.country,
+      'City':          ns.city,
+      'Radio Station': ns.name,
+      'Description':   ns.desc,
+      'Website':       ns.web,
+      'URL Link':      ns.stream,
+      'Favourite':     '',
+      'Lat':           ns.lat || '',
+      'Lng':           ns.lng || '',
+    });
   }
-  // Upsert to Pi for all cases (new, edit custom, edit builtin override)
-  piPost('/api/stations', {
-    'Continent':     '',
-    'Country':       ns.country,
-    'City':          ns.city,
-    'Radio Station': ns.name,
-    'Description':   ns.desc,
-    'Website':       ns.web,
-    'URL Link':      ns.stream,
-    'Favourite':     '',
-    'Lat':           ns.lat || '',
-    'Lng':           ns.lng || '',
-  });
   rebuildStations();
   closeModal(); renderList(); drawGlobe();
   ghSaveStationsDebounced();
@@ -1995,10 +1981,6 @@ function deleteCurrentEdit() {
     localStorage.setItem('rw_hidden_builtin', JSON.stringify([...hiddenBuiltIns]));
     localStorage.setItem('rw_overrides', JSON.stringify(builtinOverrides));
   }
-  // Delete from Pi — use stream URL as key, fall back to name
-  const _delObj = stations.find(s => s.name === editingName) || custom.find(c => c.name === editingName);
-  piDelete('/api/stations/by-key', { key: (_delObj?.stream) || editingName });
-
   favs.delete(editingName);
   deadStations.delete(editingName);
   localStorage.setItem('rw_favs', JSON.stringify([...favs]));
@@ -2013,12 +1995,13 @@ function deleteCurrentEdit() {
 document.getElementById('modal-overlay').addEventListener('click',e=>{ if(e.target===document.getElementById('modal-overlay')) closeModal(); });
 window.addEventListener('resize',()=>{ resize(); drawGlobe(); });
 
-async function pollPi() {
-  // 1. Fetch Pi favourites — union merge into localStorage
+async function syncFromPi() {
+  // Fetch Pi favourites — merge into localStorage set (union, Pi wins additions)
   const piData = await piGet('/api/favourites');
+  // Pi responded → Globe Owner tier
   if (piData !== null && accessTier < 2) {
     applyTier(2);
-    checkForUpdates();
+    checkForUpdates();  // silently check if GitHub is ahead of the Pi
   }
   const piFavs = piData?.favourites ?? (Array.isArray(piData) ? piData : null);
   if (Array.isArray(piFavs)) {
@@ -2026,81 +2009,45 @@ async function pollPi() {
     localStorage.setItem('rw_favs', JSON.stringify([...favs]));
   }
 
-  // 2. Fetch Pi stations — Pi is authoritative source of truth
+  // Fetch Pi stations — add any unknown ones as custom entries
   const piStations = await piGet('/api/stations/json');
-  if (!Array.isArray(piStations)) {
-    if (piFavs) { renderList(); drawGlobe(); }
-    return;
-  }
-
-  // Key = stream URL or station name (matches admin.py upsert key logic)
-  const piByKey = new Map();
-  for (const ps of piStations) {
-    if (!ps.name) continue;
-    piByKey.set(ps.stream || ps.name, ps);
-  }
-
-  let changed = false;
-  const builtinNames = new Set(BUILT_IN.map(b => b.name));
-
-  // 3a. Add/update Pi stations in local custom array
-  for (const [key, ps] of piByKey) {
-    const localIdx = custom.findIndex(c => (c.stream || c.name) === key);
-    if (localIdx >= 0) {
-      const c = custom[localIdx];
-      if (!c._piOrigin) { c._piOrigin = true; changed = true; }
-      if (c.name !== ps.name || c.stream !== ps.stream ||
-          c.city !== (ps.city || 'Unknown') || c.country !== (ps.country || 'Unknown')) {
-        c.name    = ps.name;
-        c.stream  = ps.stream;
-        c.city    = ps.city    || 'Unknown';
-        c.country = ps.country || 'Unknown';
-        if (ps.web)  c.web  = ps.web;
-        if (ps.desc) c.desc = ps.desc;
-        changed = true;
+  if (Array.isArray(piStations)) {
+    const existingNames = new Set(stations.map(s => s.name));
+    let added = 0;
+    for (const ps of piStations) {
+      if (!ps.name || !ps.stream) continue;
+      if (existingNames.has(ps.name)) {
+        // Update coords if Pi has better ones than what's cached in localStorage
+        if (ps.lat || ps.lng) {
+          const ex = custom.find(s => s.name === ps.name);
+          if (ex && (ex.lat !== (ps.lat||0) || ex.lng !== (ps.lng||0))) { ex.lat = ps.lat||0; ex.lng = ps.lng||0; added++; }
+        }
+        continue;
       }
-    } else if (!builtinNames.has(ps.name)) {
-      // Station on Pi but not locally — add it
       let psLat = ps.lat || 0, psLng = ps.lng || 0;
       if (!psLat && !psLng) {
         const cc = _COUNTRY_CENTERS[ps.country] || _COUNTRY_CENTERS[(ps.country||'').toLowerCase()];
         if (cc) { psLat = cc[0]; psLng = cc[1]; }
       }
       custom.push({
-        name: ps.name, city: ps.city || 'Unknown', country: ps.country || 'Unknown',
-        lat: psLat, lng: psLng, stream: ps.stream, web: ps.web || '',
-        desc: ps.desc || 'Pi-synced station.', _piOrigin: true,
+        name:    ps.name,
+        city:    ps.city    || 'Unknown',
+        country: ps.country || 'Unknown',
+        lat:     psLat,
+        lng:     psLng,
+        stream:  ps.stream,
+        web:     ps.web  || '',
+        desc:    ps.desc || 'Pi-synced station.',
       });
-      changed = true;
+      added++;
+    }
+    if (added) {
+      localStorage.setItem('rw_custom', JSON.stringify(custom));
+      rebuildStations();
     }
   }
 
-  // 3b. Remove _piOrigin stations that were deleted on the Pi
-  const before = custom.length;
-  custom = custom.filter(c => !c._piOrigin || piByKey.has(c.stream || c.name));
-  if (custom.length !== before) changed = true;
-
-  // 3c. Push local-only stations (added while Pi was offline) up to the Pi
-  for (const c of custom) {
-    if (c._piOrigin) continue;
-    if (!piByKey.has(c.stream || c.name)) {
-      piPost('/api/stations', {
-        'Continent': '', 'Country': c.country, 'City': c.city,
-        'Radio Station': c.name, 'Description': c.desc || '',
-        'Website': c.web || '', 'URL Link': c.stream,
-        'Favourite': '', 'Lat': c.lat || '', 'Lng': c.lng || '',
-      });
-      c._piOrigin = true;
-      changed = true;
-    }
-  }
-
-  if (changed) {
-    localStorage.setItem('rw_custom', JSON.stringify(custom));
-    rebuildStations();
-  }
-  renderList(); drawGlobe();
-  if (changed) ghSaveStationsDebounced();
+  if (piFavs || piStations) { renderList(); drawGlobe(); }
 }
 
 window.addEventListener('DOMContentLoaded',()=>{
@@ -2143,8 +2090,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   })();
 
   renderList(); loadWorld();
-  pollPi();      // best-effort — silently no-ops if Pi is offline
-  setInterval(pollPi, 20000);
+  syncFromPi();      // best-effort — silently no-ops if Pi is offline
   loadCalibrationFromPi();  // load pen codes from Pi or fall back to PEN_CODE_MAP
   ghLoadStations();  // merge any stations saved to GitHub repo
 });
@@ -2885,11 +2831,11 @@ function downloadFile(text, filename, mime) {
 
 function downloadPenCsv() {
   const ts = new Date().toISOString().slice(0, 10);
-  downloadFile(buildPenCsv(), `oreilles-fm_pen-mappings_${ts}.csv`, 'text/csv');
+  downloadFile(buildPenCsv(), `oreloj_pen-mappings_${ts}.csv`, 'text/csv');
 }
 function downloadRadioCsv() {
   const ts = new Date().toISOString().slice(0, 10);
-  downloadFile(buildRadioCsv(), `oreilles-fm_radio-stations_${ts}.csv`, 'text/csv');
+  downloadFile(buildRadioCsv(), `oreloj_radio-stations_${ts}.csv`, 'text/csv');
 }
 
 function copyExport(elemId, btn) {
@@ -3109,7 +3055,6 @@ document.addEventListener('keydown', (e) => {
 let _zonesData   = [];
 let _presetsData = [];
 let _pmSlot      = null;  // currently editing preset slot
-let _pmIso       = null;  // country ISO from Radio Browser search selection
 
 function toggleSbSection(which) {
   const body  = document.getElementById(which + '-body');
@@ -3359,7 +3304,6 @@ function openPresetEdit(slot) {
 function closePmModal() {
   document.getElementById('preset-modal-overlay').classList.remove('open');
   _pmSlot = null;
-  _pmIso  = null;
 }
 
 async function savePmModal() {
@@ -3369,7 +3313,6 @@ async function savePmModal() {
     name:  document.getElementById('pm-name').value.trim(),
     url:   document.getElementById('pm-url').value.trim(),
   };
-  if (_pmIso) body.iso = _pmIso;
   try {
     const r = await fetch(PI_BASE + `/api/presets/${_pmSlot}`, {
       method: 'PUT',
@@ -3415,7 +3358,6 @@ async function pmSearchRB() {
         const s = results[i];
         document.getElementById('pm-name').value = s.name;
         document.getElementById('pm-url').value  = s.url_resolved || s.url;
-        _pmIso = s.countrycode || null;
         list.innerHTML = '';
         document.getElementById('pm-rbq').value = '';
       });
@@ -3849,77 +3791,52 @@ async function sysWifiConnect(btn) {
 
 // Update
 async function checkForUpdates() {
-  // Compare Pi's VERSION against the VERSION file on GitHub.
+  // Compare Pi's deployment time (admin.py mtime) against GitHub's latest commit.
   // Only runs on oreloj.local (Globe Owner tier), silently no-ops on the public site.
   try {
     const status = await piGet('/api/status');
-    if (!status) return;
+    if (!status || !status.build_time || status.build_time === 'unknown') return;
+    const piTime = new Date(status.build_time);
+    if (isNaN(piTime)) return;
 
-    // Show current version in the bottom-right corner tag
-    const localVersion = status.version?.version || 'unknown';
-    const verTag = document.getElementById('version-tag');
-    if (verTag) verTag.textContent = `v${localVersion}`;
-
-    // Fetch the VERSION file from GitHub (plain text, no auth needed — public repo)
     const ghResp = await fetch(
-      'https://raw.githubusercontent.com/n8b2bp67qj-collab/oreloj/main/VERSION',
-      { cache: 'no-store' }
+      'https://api.github.com/repos/n8b2bp67qj-collab/oreloj/commits?per_page=1',
+      { headers: { 'Accept': 'application/vnd.github.v3+json' } }
     );
     if (!ghResp.ok) return;
-    const ghVersion = (await ghResp.text()).trim();
+    const ghData = await ghResp.json();
+    const ghTime = new Date(ghData?.[0]?.commit?.committer?.date);
+    if (isNaN(ghTime)) return;
 
-    const banner     = document.getElementById('update-banner');
-    const bannerText = document.getElementById('update-banner-text');
+    const banner = document.getElementById('update-banner');
     if (!banner) return;
-    if (ghVersion && ghVersion !== localVersion) {
-      if (bannerText) bannerText.textContent = `▲ v${ghVersion} available`;
+    if (ghTime > piTime) {
       banner.style.display = 'flex';
     } else {
       banner.style.display = 'none';
     }
-  } catch(e) { /* offline — stay silent */ }
+  } catch(e) { /* offline or rate-limited — stay silent */ }
 }
 
 async function sysUpdate() {
-  const btn        = document.getElementById('sys-update-btn');
-  const out        = document.getElementById('sys-upd-out');
-  const bannerBtn  = document.getElementById('update-banner-btn');
-  const bannerText = document.getElementById('update-banner-text');
-
-  // Disable + show progress on both the banner and the system panel button
-  const _setBusy = () => {
-    if (btn)        { btn.disabled = true;       btn.innerHTML = '<span class="spin"></span> updating…'; }
-    if (bannerBtn)  { bannerBtn.disabled = true;  bannerBtn.textContent = 'updating…'; }
-    if (bannerText) bannerText.textContent = '⟳ downloading…';
-    if (out)        out.style.display = 'none';
-  };
-  const _setIdle = () => {
-    if (btn)       { btn.disabled = false; btn.textContent = '↑ update'; }
-    if (bannerBtn) { bannerBtn.disabled = false; bannerBtn.textContent = 'update now'; }
-  };
-
-  _setBusy();
+  const btn = document.getElementById('sys-update-btn');
+  const out = document.getElementById('sys-upd-out');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> updating…';
+  out.style.display = 'none';
   try {
     const r = await _sysApi('POST', '/api/update');
-    if (!r) {
-      if (bannerText) bannerText.textContent = '▲ update failed — try again';
-      _setIdle(); return;
-    }
-    const msg = r.msg || (r.updated ? 'Updated.' : 'Already up to date.');
-    if (out) { out.style.display = 'block'; out.textContent = msg; }
+    if (!r) { btn.disabled = false; btn.textContent = '↑ update'; return; }
+    out.style.display = 'block';
+    out.textContent = r.msg || (r.updated ? 'Updated.' : 'Already up to date.');
     if (r.restart) {
-      if (bannerText) bannerText.textContent = `✓ ${msg} — restarting…`;
-      if (out) out.textContent += '\nRestarting in 5s…';
+      out.textContent += '\nRestarting in 5s…';
       setTimeout(() => location.reload(), 5000);
     } else {
-      if (bannerText) bannerText.textContent = `✓ ${msg}`;
-      _setIdle();
-      // Re-check for updates after a moment (banner may now hide itself)
-      setTimeout(checkForUpdates, 1500);
+      btn.disabled = false; btn.textContent = '↑ update';
     }
   } catch(e) {
-    if (bannerText) bannerText.textContent = '▲ update failed';
-    _setIdle();
+    btn.disabled = false; btn.textContent = '↑ update';
   }
 }
 </script>
