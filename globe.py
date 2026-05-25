@@ -42,6 +42,7 @@ MPV_CMD      = ["mpv", "--no-video", "--really-quiet", "--cache=yes", "--no-inpu
                 f"--input-ipc-server={MPV_SOCKET}"]
 DEBOUNCE_SEC    = 0.5
 CYCLE_RESET_SEC = 25
+VOLUME_PATH  = SCRIPT_DIR / "volume.json"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(message)s", datefmt="%H:%M:%S")
 log = logging.getLogger("globe")
@@ -89,7 +90,7 @@ def load_calibration() -> None:
 # Format: {"a0xxxf": "favourite_toggle", ...}
 ACTION_MAP: dict[str, str] = {}
 PRESET_MAP: dict[int, dict] = {}   # slot (1-6) → {name, url, label}
-_current_volume: int = 80
+_current_volume: int = 80  # loaded from volume.json in main()
 
 def load_actions() -> None:
     if not ACTIONS_FILE.exists():
@@ -348,20 +349,41 @@ def resolve_stream(iso_list: list[str], curated: dict[str, list[dict]]) -> tuple
 
 _mpv: subprocess.Popen | None = None
 _current_station: str | None = None  # name of currently playing station
+_current_url:     str | None = None  # URL of currently playing stream
+
+
+def _load_volume() -> int:
+    try:
+        return int(json.loads(VOLUME_PATH.read_text(encoding="utf-8")).get("volume", 80))
+    except Exception:
+        return 80
+
+
+def _save_volume(vol: int) -> None:
+    try:
+        tmp = VOLUME_PATH.with_suffix(".tmp")
+        tmp.write_text(json.dumps({"volume": vol}), encoding="utf-8")
+        tmp.replace(VOLUME_PATH)
+    except Exception as e:
+        log.warning(f"Could not save volume: {e}")
+
 
 def play(url: str, name: str | None = None) -> None:
-    global _mpv, _current_station
+    global _mpv, _current_station, _current_url
     if _mpv and _mpv.poll() is None:
         _mpv.terminate(); _mpv.wait()
     _mpv = subprocess.Popen(MPV_CMD + [url], stdin=subprocess.DEVNULL)
     _current_station = name
+    _current_url     = url
+
 
 def stop() -> None:
-    global _mpv, _current_station
+    global _mpv, _current_station, _current_url
     if _mpv and _mpv.poll() is None:
         _mpv.terminate(); _mpv.wait()
     _mpv = None
     _current_station = None
+    _current_url     = None
 
 
 # ── Volume control via mpv IPC ────────────────────────────────────────────────
@@ -465,12 +487,14 @@ def dispatch_action(action: str, curated: dict[str, list[dict]]) -> None:
     elif action == "volume_up":
         _current_volume = min(100, _current_volume + 10)
         _mpv_set_volume(_current_volume)
+        _save_volume(_current_volume)
         speak("volume up")
         log.info(f"Volume → {_current_volume}")
 
     elif action == "volume_down":
         _current_volume = max(0, _current_volume - 10)
         _mpv_set_volume(_current_volume)
+        _save_volume(_current_volume)
         speak("volume down")
         log.info(f"Volume → {_current_volume}")
 
@@ -583,6 +607,7 @@ def calibrate() -> None:
 
 
 def main() -> None:
+    global _current_volume, _mpv, _current_station, _current_url
     calibrate_mode = "--calibrate" in sys.argv
 
     def shutdown(sig, _frame):
@@ -590,6 +615,9 @@ def main() -> None:
 
     signal.signal(signal.SIGTERM, shutdown)
     signal.signal(signal.SIGINT, shutdown)
+
+    _current_volume = _load_volume()
+    log.info(f"Volume: {_current_volume}")
 
     curated = load_stations(STATIONS_CSV)
     load_actions()
@@ -613,6 +641,13 @@ def main() -> None:
         try:
             code = _tap_queue.get(timeout=1.0)
         except queue.Empty:
+            # Check for unexpected stream death (network drop, station offline, etc.)
+            if _mpv is not None and _mpv.poll() is not None:
+                log.warning("Stream lost — mpv exited unexpectedly")
+                _mpv = None
+                _current_station = None
+                _current_url = None
+                threading.Thread(target=speak, args=("stream lost",), daemon=True).start()
             continue
 
         now = time.monotonic()
