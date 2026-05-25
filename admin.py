@@ -21,43 +21,17 @@ def _build_time() -> str:
         return datetime.datetime.utcfromtimestamp(ts).strftime('%Y-%m-%dT%H:%M:%SZ')
     except Exception:
         return "unknown"
-
-
-def _read_version() -> dict:
-    """Return {version, sha, date}. VERSION file is the human-readable number."""
-    v = "unknown"
-    try:
-        v = VERSION_FILE.read_text(encoding="utf-8").strip()
-    except Exception:
-        pass
-    try:
-        meta = json.loads(VERSION_PATH.read_text(encoding="utf-8"))
-        meta["version"] = v
-        return meta
-    except Exception:
-        return {"version": v, "sha": "unknown", "date": _build_time()[:10]}
-
-
-def _write_version(sha: str, date: str) -> None:
-    try:
-        VERSION_PATH.write_text(
-            json.dumps({"sha": sha, "date": date}), encoding="utf-8"
-        )
-    except Exception:
-        pass
 STATIONS_CSV     = SCRIPT_DIR / "stations.csv"
 FAVS_PATH        = SCRIPT_DIR / "favourites.json"
 ACTIONS_FILE     = SCRIPT_DIR / "actions.json"
 CALIBRATION_CSV  = SCRIPT_DIR / "calibration.csv"
-VERSION_PATH     = SCRIPT_DIR / "version.txt"
-VERSION_FILE     = SCRIPT_DIR / "VERSION"
 CAL_FIELDS       = ["code", "country_iso", "country_name", "region", "lat", "lng"]
 CSV_FIELDS   = ["Continent", "Country", "City", "Radio Station",
                  "Description", "Website", "URL Link", "Favourite", "Lat", "Lng"]
 
 # Set this to the raw GitHub URL of stations.csv once it's committed to the
-# human-ears repo, e.g.:
-#   "https://raw.githubusercontent.com/<username>/human-ears/main/stations.csv"
+# oreloj repo, e.g.:
+#   "https://raw.githubusercontent.com/<username>/oreloj/main/stations.csv"
 # The Sync button in the UI calls /api/sync which fetches from this URL.
 SYNC_URL = ""
 
@@ -195,8 +169,7 @@ def api_status():
                 break
 
     return jsonify({"playing": playing, "bt": bt, "wifi": wifi,
-                    "hotspot_mode": hotspot_mode, "build_time": _build_time(),
-                    "version": _read_version()})
+                    "hotspot_mode": hotspot_mode, "build_time": _build_time()})
 
 
 # ── API: stations ─────────────────────────────────────────────────────────────
@@ -208,32 +181,13 @@ def api_stations_get():
 
 @app.post("/api/stations")
 def api_stations_post():
-    """Upsert a station by key (URL Link, then Radio Station). Safe to call repeatedly."""
     data = request.json or {}
     rows = read_csv()
-    incoming_url  = data.get("URL Link", "").strip()
-    incoming_name = data.get("Radio Station", "").strip()
-    idx = None
-    if incoming_url:
-        for i, r in enumerate(rows):
-            if r.get("URL Link", "").strip() == incoming_url:
-                idx = i; break
-    if idx is None and incoming_name:
-        for i, r in enumerate(rows):
-            if r.get("Radio Station", "").strip() == incoming_name:
-                idx = i; break
-    if idx is not None:
-        for k in CSV_FIELDS:
-            if k in data:
-                rows[idx][k] = data[k]
-        write_csv(rows)
-        _notify_globe()
-        return jsonify({"ok": True, "added": False, "updated": True})
-    row = {k: data.get(k, "") for k in CSV_FIELDS}
+    row  = {k: data.get(k, "") for k in CSV_FIELDS}
     rows.append(row)
     write_csv(rows)
     _notify_globe()
-    return jsonify({"ok": True, "added": True, "updated": False})
+    return jsonify({"ok": True, "index": len(rows) - 1})
 
 
 @app.put("/api/stations/<int:idx>")
@@ -247,25 +201,6 @@ def api_stations_put(idx):
     write_csv(rows)
     _notify_globe()
     return jsonify({"ok": True})
-
-
-@app.delete("/api/stations/by-key")
-def api_stations_delete_by_key():
-    """Delete station(s) matching the given key (URL Link or Radio Station name)."""
-    key = (request.json or {}).get("key", "").strip()
-    if not key:
-        abort(400)
-    rows = read_csv()
-    new_rows = [
-        r for r in rows
-        if r.get("URL Link", "").strip() != key
-        and r.get("Radio Station", "").strip() != key
-    ]
-    if len(new_rows) == len(rows):
-        abort(404)
-    write_csv(new_rows)
-    _notify_globe()
-    return jsonify({"ok": True, "removed": len(rows) - len(new_rows)})
 
 
 @app.delete("/api/stations/<int:idx>")
@@ -429,7 +364,7 @@ def api_presets_put(slot):
         presets.append(preset)
         data["presets"] = presets
     body = request.json or {}
-    for field in ("name", "url", "label", "iso"):
+    for field in ("name", "url", "label"):
         if field in body:
             preset[field] = body[field]
     write_actions(data)
@@ -737,79 +672,37 @@ def api_sync():
     return jsonify({"ok": True, "added": added})
 
 
-# ── API: update from GitHub ───────────────────────────────────────────────────
-# Downloads code files from the public GitHub repo and replaces local copies.
-# Data files (stations.csv, actions.json, favourites.json) are never touched.
-
-_REPO_RAW    = "https://raw.githubusercontent.com/n8b2bp67qj-collab/oreloj/main"
-_CODE_FILES  = ["VERSION", "globe.py", "admin.py", "index.html",
-                "d3.min.js", "topojson-client.min.js", "calibration.csv"]
-
+# ── API: git update ───────────────────────────────────────────────────────────
 
 @app.post("/api/update")
 def api_update():
-    """Download latest code files from GitHub, replace local copies, restart services."""
-    updated_files: list[str] = []
-    errors:        list[str] = []
+    """Run `git pull origin main` on ~/globe and restart services if anything changed."""
+    globe_dir = str(Path.home() / "globe")
+    rc, out = _run(["git", "-C", globe_dir, "pull", "origin", "main"], timeout=30)
+    if rc != 0:
+        return jsonify({"ok": False, "updated": False, "msg": out, "restart": False}), 500
 
-    for fname in _CODE_FILES:
+    updated = "Already up to date." not in out
+    if updated:
+        env = {**os.environ, "XDG_RUNTIME_DIR": f"/run/user/{os.getuid()}"}
+        # Restart globe immediately, then restart admin after a short delay
+        # (admin restart kills this very response, so we detach it).
         try:
-            req = urllib.request.Request(
-                f"{_REPO_RAW}/{fname}", headers={"User-Agent": "oreloj/1"}
+            subprocess.run(
+                ["systemctl", "--user", "restart", "globe.service"],
+                env=env, timeout=5, capture_output=True,
             )
-            with urllib.request.urlopen(req, timeout=20) as resp:
-                remote = resp.read()
-            local_path = SCRIPT_DIR / fname
-            if local_path.exists() and local_path.read_bytes() == remote:
-                continue                                       # identical — skip
-            tmp = local_path.with_suffix(local_path.suffix + ".tmp")
-            tmp.write_bytes(remote)
-            tmp.replace(local_path)
-            updated_files.append(fname)
-        except Exception as e:
-            errors.append(f"{fname}: {e}")
-
-    if errors:
-        return jsonify({"ok": False, "updated": bool(updated_files),
-                        "msg": "Errors: " + "; ".join(errors), "restart": False}), 502
-
-    if not updated_files:
-        return jsonify({"ok": True, "updated": False,
-                        "msg": "Already up to date.", "restart": False})
-
-    env = {**os.environ, "XDG_RUNTIME_DIR": f"/run/user/{os.getuid()}"}
-    globe_changed = "globe.py" in updated_files
-    admin_changed = any(f in updated_files for f in
-                        ("admin.py", "index.html", "d3.min.js", "topojson-client.min.js"))
-    try:
-        if globe_changed:
-            subprocess.run(["systemctl", "--user", "restart", "globe.service"],
-                           env=env, timeout=5, capture_output=True)
-        if admin_changed:
-            # Detach — restarting admin kills this very response
             subprocess.Popen(
-                ["bash", "-c", "sleep 2 && systemctl --user restart admin.service"],
+                ["bash", "-c",
+                 "sleep 2 && systemctl --user restart admin.service"],
                 env=env,
             )
-    except Exception as e:
-        return jsonify({"ok": True, "updated": True,
-                        "msg": f"Updated: {', '.join(updated_files)}",
-                        "restart": False, "warn": str(e)})
+        except Exception as e:
+            return jsonify({"ok": True, "updated": True, "msg": out,
+                            "restart": False, "warn": str(e)})
+        return jsonify({"ok": True, "updated": True, "msg": out, "restart": True})
 
-    # Record the deployed version (fetch latest commit SHA from GitHub)
-    try:
-        vreq = urllib.request.Request(
-            "https://api.github.com/repos/n8b2bp67qj-collab/oreloj/commits?per_page=1",
-            headers={"User-Agent": "oreloj/1", "Accept": "application/vnd.github.v3+json"},
-        )
-        with urllib.request.urlopen(vreq, timeout=10) as vr:
-            commits = json.loads(vr.read())
-        _write_version(commits[0]["sha"][:7], commits[0]["commit"]["committer"]["date"][:10])
-    except Exception:
-        pass
-
-    msg = f"Updated: {', '.join(updated_files)}"
-    return jsonify({"ok": True, "updated": True, "msg": msg, "restart": admin_changed})
+    return jsonify({"ok": True, "updated": False, "msg": out, "restart": False})
 
 
 # ── captive portal ───────────────────────────────────────────────────────────
@@ -841,24 +734,14 @@ for _path in [
 
 # ── Frontend ──────────────────────────────────────────────────────────────────
 # The full UI lives in index.html alongside this file.
-# GET / serves it directly; static assets (JS libs) are served by the catch-all below.
+# GET / serves it directly via send_file below.
+# (no embedded HTML — index.html is served directly)
+# ── run ───────────────────────────────────────────────────────────────────────
 
 @app.get("/")
 def index():
     """Serve the unified index.html UI."""
     return send_file(SCRIPT_DIR / "index.html")
-
-
-@app.get("/<path:filename>")
-def serve_static(filename):
-    """Serve static assets (JS, CSS) bundled alongside index.html."""
-    safe_extensions = (".js", ".css", ".ico", ".png", ".woff", ".woff2")
-    if not any(filename.endswith(ext) for ext in safe_extensions):
-        abort(404)
-    path = SCRIPT_DIR / filename
-    if not path.is_file():
-        abort(404)
-    return send_file(str(path))
 
 
 if __name__ == "__main__":
