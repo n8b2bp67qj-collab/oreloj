@@ -534,8 +534,8 @@ audio { display: none; }
     <div id="sw"><input type="text" id="search" placeholder="search stations…" oninput="renderList()"></div>
     <div id="sidebar-scroll">
       <div id="update-banner">
-        <span>▲ update available</span>
-        <button onclick="sysUpdate()">update now</button>
+        <span id="update-banner-text">▲ update available</span>
+        <button id="update-banner-btn" onclick="sysUpdate()">update now</button>
       </div>
       <div id="list"></div>
 
@@ -3849,11 +3849,22 @@ async function sysWifiConnect(btn) {
 
 // Update
 async function checkForUpdates() {
-  // Compare Pi's deployment time (admin.py mtime) against GitHub's latest commit.
+  // Compare Pi's deployment time against GitHub's latest commit.
   // Only runs on oreloj.local (Globe Owner tier), silently no-ops on the public site.
   try {
     const status = await piGet('/api/status');
-    if (!status || !status.build_time || status.build_time === 'unknown') return;
+    if (!status) return;
+
+    // Show deployed version in the corner tag
+    const verTag = document.getElementById('version-tag');
+    if (verTag && status.version) {
+      const v = status.version;
+      verTag.textContent = v.sha && v.sha !== 'unknown'
+        ? `${v.sha} · ${v.date}`
+        : (status.build_time || 'unknown').slice(0, 10);
+    }
+
+    if (!status.build_time || status.build_time === 'unknown') return;
     const piTime = new Date(status.build_time);
     if (isNaN(piTime)) return;
 
@@ -3864,11 +3875,14 @@ async function checkForUpdates() {
     if (!ghResp.ok) return;
     const ghData = await ghResp.json();
     const ghTime = new Date(ghData?.[0]?.commit?.committer?.date);
+    const ghSha  = (ghData?.[0]?.sha || '').slice(0, 7);
     if (isNaN(ghTime)) return;
 
-    const banner = document.getElementById('update-banner');
+    const banner     = document.getElementById('update-banner');
+    const bannerText = document.getElementById('update-banner-text');
     if (!banner) return;
     if (ghTime > piTime) {
+      if (bannerText) bannerText.textContent = `▲ ${ghSha} available`;
       banner.style.display = 'flex';
     } else {
       banner.style.display = 'none';
@@ -3877,24 +3891,45 @@ async function checkForUpdates() {
 }
 
 async function sysUpdate() {
-  const btn = document.getElementById('sys-update-btn');
-  const out = document.getElementById('sys-upd-out');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spin"></span> updating…';
-  out.style.display = 'none';
+  const btn        = document.getElementById('sys-update-btn');
+  const out        = document.getElementById('sys-upd-out');
+  const bannerBtn  = document.getElementById('update-banner-btn');
+  const bannerText = document.getElementById('update-banner-text');
+
+  // Disable + show progress on both the banner and the system panel button
+  const _setBusy = () => {
+    if (btn)        { btn.disabled = true;       btn.innerHTML = '<span class="spin"></span> updating…'; }
+    if (bannerBtn)  { bannerBtn.disabled = true;  bannerBtn.textContent = 'updating…'; }
+    if (bannerText) bannerText.textContent = '⟳ downloading…';
+    if (out)        out.style.display = 'none';
+  };
+  const _setIdle = () => {
+    if (btn)       { btn.disabled = false; btn.textContent = '↑ update'; }
+    if (bannerBtn) { bannerBtn.disabled = false; bannerBtn.textContent = 'update now'; }
+  };
+
+  _setBusy();
   try {
     const r = await _sysApi('POST', '/api/update');
-    if (!r) { btn.disabled = false; btn.textContent = '↑ update'; return; }
-    out.style.display = 'block';
-    out.textContent = r.msg || (r.updated ? 'Updated.' : 'Already up to date.');
+    if (!r) {
+      if (bannerText) bannerText.textContent = '▲ update failed — try again';
+      _setIdle(); return;
+    }
+    const msg = r.msg || (r.updated ? 'Updated.' : 'Already up to date.');
+    if (out) { out.style.display = 'block'; out.textContent = msg; }
     if (r.restart) {
-      out.textContent += '\nRestarting in 5s…';
+      if (bannerText) bannerText.textContent = `✓ ${msg} — restarting…`;
+      if (out) out.textContent += '\nRestarting in 5s…';
       setTimeout(() => location.reload(), 5000);
     } else {
-      btn.disabled = false; btn.textContent = '↑ update';
+      if (bannerText) bannerText.textContent = `✓ ${msg}`;
+      _setIdle();
+      // Re-check for updates after a moment (banner may now hide itself)
+      setTimeout(checkForUpdates, 1500);
     }
   } catch(e) {
-    btn.disabled = false; btn.textContent = '↑ update';
+    if (bannerText) bannerText.textContent = '▲ update failed';
+    _setIdle();
   }
 }
 </script>
