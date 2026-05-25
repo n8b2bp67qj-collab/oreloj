@@ -40,7 +40,8 @@ API_SERVERS  = [
 MPV_SOCKET   = "/tmp/globe-mpv.sock"
 MPV_CMD      = ["mpv", "--no-video", "--really-quiet", "--cache=yes", "--no-input-terminal",
                 f"--input-ipc-server={MPV_SOCKET}"]
-DEBOUNCE_SEC = 2.0
+DEBOUNCE_SEC    = 0.5
+CYCLE_RESET_SEC = 25
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(message)s", datefmt="%H:%M:%S")
 log = logging.getLogger("globe")
@@ -114,6 +115,7 @@ def load_actions() -> None:
                         "name":  preset.get("name", ""),
                         "url":   preset.get("url", ""),
                         "label": preset.get("label", f"Preset {slot}"),
+                        "iso":   preset.get("iso"),
                     }
             log.info(f"Loaded {len(PRESET_MAP)} preset slot(s)")
         else:
@@ -257,6 +259,50 @@ def load_stations(path: Path) -> dict[str, list[dict]]:
     total = sum(len(v) for v in stations.values())
     log.info(f"Loaded {total} stations across {len(stations)} countries ({skipped} skipped)")
     return stations
+
+
+def _preset_iso(preset: dict, curated: dict[str, list[dict]]) -> str | None:
+    """Return the ISO country code for a preset, using stored iso or URL/name matching."""
+    if preset.get("iso"):
+        return preset["iso"]
+    url  = preset.get("url",  "").lower()
+    name = preset.get("name", "").lower()
+    for iso, pool in curated.items():
+        for s in pool:
+            if url  and s.get("url",  "").lower() == url:  return iso
+            if name and s.get("name", "").lower() == name: return iso
+    return None
+
+
+def build_country_playlist(iso_list: list[str], curated: dict[str, list[dict]]) -> list[dict]:
+    """Ordered playlist for a country tap: presets → liked stations → other stations."""
+    playlist: list[dict] = []
+    seen: set[str] = set()
+
+    def _add(station: dict) -> None:
+        key = station.get("url") or station.get("name")
+        if key and key not in seen:
+            seen.add(key)
+            playlist.append(station)
+
+    for slot in sorted(PRESET_MAP.keys()):
+        preset = PRESET_MAP[slot]
+        if not preset.get("url"):
+            continue
+        if _preset_iso(preset, curated) in iso_list:
+            _add({"name": preset.get("name") or preset.get("label"), "url": preset["url"]})
+
+    for iso in iso_list:
+        for s in curated.get(iso, []):
+            if s["favourite"] and s.get("url"):
+                _add(s)
+
+    for iso in iso_list:
+        for s in curated.get(iso, []):
+            if not s["favourite"] and s.get("url"):
+                _add(s)
+
+    return playlist
 
 
 def pick_curated(stations: dict[str, list[dict]], iso: str) -> dict | None:
@@ -561,6 +607,7 @@ def main() -> None:
 
     last_code:    str | None = None
     last_trigger: float      = 0.0
+    cycle: dict = {"code": None, "index": 0, "time": 0.0}
 
     while True:
         try:
@@ -592,11 +639,26 @@ def main() -> None:
         log.info(f"Tap → {label}  ({code})")
         speak(_entries_to_tts(entries))
 
-        url, name = resolve_stream(iso_list, curated)
-        if url:
-            play(url, name)
+        # Cycling: same country within CYCLE_RESET_SEC → advance; otherwise restart
+        if cycle["code"] == code and (now - cycle["time"]) < CYCLE_RESET_SEC:
+            cycle["index"] += 1
         else:
-            log.warning(f"No stream for {label}")
+            cycle["index"] = 0
+        cycle["code"] = code
+        cycle["time"] = now
+
+        playlist = build_country_playlist(iso_list, curated)
+        if cycle["index"] < len(playlist):
+            station = playlist[cycle["index"]]
+            log.info(f"  ♪  {station['name']}  [cycle {cycle['index'] + 1}/{len(playlist)}]")
+            play(station["url"], station.get("name"))
+        else:
+            url = get_stream_from_api(iso_list[0])
+            if url:
+                play(url, None)
+            else:
+                log.warning(f"No stream for {label}")
+            cycle["index"] = -1  # next tap restarts at top
 
 
 if __name__ == "__main__":
