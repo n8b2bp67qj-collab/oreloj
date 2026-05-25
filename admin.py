@@ -21,10 +21,28 @@ def _build_time() -> str:
         return datetime.datetime.utcfromtimestamp(ts).strftime('%Y-%m-%dT%H:%M:%SZ')
     except Exception:
         return "unknown"
+
+
+def _read_version() -> dict:
+    """Return {sha, date} from version.txt, or fallback values."""
+    try:
+        return json.loads(VERSION_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {"sha": "unknown", "date": _build_time()[:10]}
+
+
+def _write_version(sha: str, date: str) -> None:
+    try:
+        VERSION_PATH.write_text(
+            json.dumps({"sha": sha, "date": date}), encoding="utf-8"
+        )
+    except Exception:
+        pass
 STATIONS_CSV     = SCRIPT_DIR / "stations.csv"
 FAVS_PATH        = SCRIPT_DIR / "favourites.json"
 ACTIONS_FILE     = SCRIPT_DIR / "actions.json"
 CALIBRATION_CSV  = SCRIPT_DIR / "calibration.csv"
+VERSION_PATH     = SCRIPT_DIR / "version.txt"
 CAL_FIELDS       = ["code", "country_iso", "country_name", "region", "lat", "lng"]
 CSV_FIELDS   = ["Continent", "Country", "City", "Radio Station",
                  "Description", "Website", "URL Link", "Favourite", "Lat", "Lng"]
@@ -169,7 +187,8 @@ def api_status():
                 break
 
     return jsonify({"playing": playing, "bt": bt, "wifi": wifi,
-                    "hotspot_mode": hotspot_mode, "build_time": _build_time()})
+                    "hotspot_mode": hotspot_mode, "build_time": _build_time(),
+                    "version": _read_version()})
 
 
 # ── API: stations ─────────────────────────────────────────────────────────────
@@ -768,6 +787,18 @@ def api_update():
         return jsonify({"ok": True, "updated": True,
                         "msg": f"Updated: {', '.join(updated_files)}",
                         "restart": False, "warn": str(e)})
+
+    # Record the deployed version (fetch latest commit SHA from GitHub)
+    try:
+        vreq = urllib.request.Request(
+            "https://api.github.com/repos/n8b2bp67qj-collab/oreloj/commits?per_page=1",
+            headers={"User-Agent": "oreloj/1", "Accept": "application/vnd.github.v3+json"},
+        )
+        with urllib.request.urlopen(vreq, timeout=10) as vr:
+            commits = json.loads(vr.read())
+        _write_version(commits[0]["sha"][:7], commits[0]["commit"]["committer"]["date"][:10])
+    except Exception:
+        pass
 
     msg = f"Updated: {', '.join(updated_files)}"
     return jsonify({"ok": True, "updated": True, "msg": msg, "restart": admin_changed})
