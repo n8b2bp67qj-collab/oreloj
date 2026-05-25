@@ -24,11 +24,18 @@ def _build_time() -> str:
 
 
 def _read_version() -> dict:
-    """Return {sha, date} from version.txt, or fallback values."""
+    """Return {version, sha, date}. VERSION file is the human-readable number."""
+    v = "unknown"
     try:
-        return json.loads(VERSION_PATH.read_text(encoding="utf-8"))
+        v = VERSION_FILE.read_text(encoding="utf-8").strip()
     except Exception:
-        return {"sha": "unknown", "date": _build_time()[:10]}
+        pass
+    try:
+        meta = json.loads(VERSION_PATH.read_text(encoding="utf-8"))
+        meta["version"] = v
+        return meta
+    except Exception:
+        return {"version": v, "sha": "unknown", "date": _build_time()[:10]}
 
 
 def _write_version(sha: str, date: str) -> None:
@@ -43,6 +50,7 @@ FAVS_PATH        = SCRIPT_DIR / "favourites.json"
 ACTIONS_FILE     = SCRIPT_DIR / "actions.json"
 CALIBRATION_CSV  = SCRIPT_DIR / "calibration.csv"
 VERSION_PATH     = SCRIPT_DIR / "version.txt"
+VERSION_FILE     = SCRIPT_DIR / "VERSION"
 CAL_FIELDS       = ["code", "country_iso", "country_name", "region", "lat", "lng"]
 CSV_FIELDS   = ["Continent", "Country", "City", "Radio Station",
                  "Description", "Website", "URL Link", "Favourite", "Lat", "Lng"]
@@ -734,7 +742,7 @@ def api_sync():
 # Data files (stations.csv, actions.json, favourites.json) are never touched.
 
 _REPO_RAW    = "https://raw.githubusercontent.com/n8b2bp67qj-collab/oreloj/main"
-_CODE_FILES  = ["globe.py", "admin.py", "index.html",
+_CODE_FILES  = ["VERSION", "globe.py", "admin.py", "index.html",
                 "d3.min.js", "topojson-client.min.js", "calibration.csv"]
 
 
