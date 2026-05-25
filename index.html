@@ -79,6 +79,12 @@ body {
 }
 #exportbtn:hover { border-color: var(--text); color: var(--text); }
 @media (max-width: 550px) { #exportbtn { display: none; } }
+#randombtn {
+  background: transparent; border: 1px dashed var(--border); color: var(--muted);
+  padding: 7px 10px; border-radius: 2px; font-family: 'Space Mono', monospace;
+  font-size: 10px; cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: all .15s;
+}
+#randombtn:hover { border-color: var(--text); color: var(--text); }
 
 /* ── Export modal ── */
 #export-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.8); z-index: 9998; display: none; align-items: center; justify-content: center; }
@@ -530,6 +536,7 @@ audio { display: none; }
   <div id="pen-pill" title="SmartGlobe pen ready — tap a country">
     <span class="pen-dot"></span><span>pen</span>
   </div>
+  <button id="randombtn" onclick="playRandom()" title="Play a random station">⚄ random</button>
   <button id="exportbtn" onclick="openExport()" title="Export pen mappings + radio stations">⤓ data</button>
   <button id="addbtn" onclick="openModal()">+ add radio</button>
 </div>
@@ -1476,6 +1483,13 @@ function onVolume(v) {
 }
 
 // ── Audio ─────────────────────────────────────────────────────────────────
+function playRandom() {
+  const pool = stations.map((s, i) => i).filter(i => !deadStations.has(stations[i].name));
+  if (!pool.length) return;
+  const idx = pool[Math.floor(Math.random() * pool.length)];
+  rotateTo(stations[idx].lng, stations[idx].lat, () => { openPopup(idx); playStation(idx); });
+}
+
 async function playStation(idx) {
   const s = stations[idx];
   const btn = document.getElementById('pop-playbtn');
