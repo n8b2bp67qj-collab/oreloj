@@ -3849,45 +3849,35 @@ async function sysWifiConnect(btn) {
 
 // Update
 async function checkForUpdates() {
-  // Compare Pi's deployment time against GitHub's latest commit.
+  // Compare Pi's VERSION against the VERSION file on GitHub.
   // Only runs on oreloj.local (Globe Owner tier), silently no-ops on the public site.
   try {
     const status = await piGet('/api/status');
     if (!status) return;
 
-    // Show deployed version in the corner tag
+    // Show current version in the bottom-right corner tag
+    const localVersion = status.version?.version || 'unknown';
     const verTag = document.getElementById('version-tag');
-    if (verTag && status.version) {
-      const v = status.version;
-      verTag.textContent = v.sha && v.sha !== 'unknown'
-        ? `${v.sha} · ${v.date}`
-        : (status.build_time || 'unknown').slice(0, 10);
-    }
+    if (verTag) verTag.textContent = `v${localVersion}`;
 
-    if (!status.build_time || status.build_time === 'unknown') return;
-    const piTime = new Date(status.build_time);
-    if (isNaN(piTime)) return;
-
+    // Fetch the VERSION file from GitHub (plain text, no auth needed — public repo)
     const ghResp = await fetch(
-      'https://api.github.com/repos/n8b2bp67qj-collab/oreloj/commits?per_page=1',
-      { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+      'https://raw.githubusercontent.com/n8b2bp67qj-collab/oreloj/main/VERSION',
+      { cache: 'no-store' }
     );
     if (!ghResp.ok) return;
-    const ghData = await ghResp.json();
-    const ghTime = new Date(ghData?.[0]?.commit?.committer?.date);
-    const ghSha  = (ghData?.[0]?.sha || '').slice(0, 7);
-    if (isNaN(ghTime)) return;
+    const ghVersion = (await ghResp.text()).trim();
 
     const banner     = document.getElementById('update-banner');
     const bannerText = document.getElementById('update-banner-text');
     if (!banner) return;
-    if (ghTime > piTime) {
-      if (bannerText) bannerText.textContent = `▲ ${ghSha} available`;
+    if (ghVersion && ghVersion !== localVersion) {
+      if (bannerText) bannerText.textContent = `▲ v${ghVersion} available`;
       banner.style.display = 'flex';
     } else {
       banner.style.display = 'none';
     }
-  } catch(e) { /* offline or rate-limited — stay silent */ }
+  } catch(e) { /* offline — stay silent */ }
 }
 
 async function sysUpdate() {
