@@ -710,37 +710,67 @@ def api_sync():
     return jsonify({"ok": True, "added": added})
 
 
-# ── API: git update ───────────────────────────────────────────────────────────
+# ── API: update from GitHub ───────────────────────────────────────────────────
+# Downloads code files from the public GitHub repo and replaces local copies.
+# Data files (stations.csv, actions.json, favourites.json) are never touched.
+
+_REPO_RAW    = "https://raw.githubusercontent.com/n8b2bp67qj-collab/oreloj/main"
+_CODE_FILES  = ["globe.py", "admin.py", "index.html",
+                "d3.min.js", "topojson-client.min.js", "calibration.csv"]
+
 
 @app.post("/api/update")
 def api_update():
-    """Run `git pull origin main` on ~/globe and restart services if anything changed."""
-    globe_dir = str(Path.home() / "globe")
-    rc, out = _run(["git", "-C", globe_dir, "pull", "origin", "main"], timeout=30)
-    if rc != 0:
-        return jsonify({"ok": False, "updated": False, "msg": out, "restart": False}), 500
+    """Download latest code files from GitHub, replace local copies, restart services."""
+    updated_files: list[str] = []
+    errors:        list[str] = []
 
-    updated = "Already up to date." not in out
-    if updated:
-        env = {**os.environ, "XDG_RUNTIME_DIR": f"/run/user/{os.getuid()}"}
-        # Restart globe immediately, then restart admin after a short delay
-        # (admin restart kills this very response, so we detach it).
+    for fname in _CODE_FILES:
         try:
-            subprocess.run(
-                ["systemctl", "--user", "restart", "globe.service"],
-                env=env, timeout=5, capture_output=True,
+            req = urllib.request.Request(
+                f"{_REPO_RAW}/{fname}", headers={"User-Agent": "oreloj/1"}
             )
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                remote = resp.read()
+            local_path = SCRIPT_DIR / fname
+            if local_path.exists() and local_path.read_bytes() == remote:
+                continue                                       # identical — skip
+            tmp = local_path.with_suffix(local_path.suffix + ".tmp")
+            tmp.write_bytes(remote)
+            tmp.replace(local_path)
+            updated_files.append(fname)
+        except Exception as e:
+            errors.append(f"{fname}: {e}")
+
+    if errors:
+        return jsonify({"ok": False, "updated": bool(updated_files),
+                        "msg": "Errors: " + "; ".join(errors), "restart": False}), 502
+
+    if not updated_files:
+        return jsonify({"ok": True, "updated": False,
+                        "msg": "Already up to date.", "restart": False})
+
+    env = {**os.environ, "XDG_RUNTIME_DIR": f"/run/user/{os.getuid()}"}
+    globe_changed = "globe.py" in updated_files
+    admin_changed = any(f in updated_files for f in
+                        ("admin.py", "index.html", "d3.min.js", "topojson-client.min.js"))
+    try:
+        if globe_changed:
+            subprocess.run(["systemctl", "--user", "restart", "globe.service"],
+                           env=env, timeout=5, capture_output=True)
+        if admin_changed:
+            # Detach — restarting admin kills this very response
             subprocess.Popen(
-                ["bash", "-c",
-                 "sleep 2 && systemctl --user restart admin.service"],
+                ["bash", "-c", "sleep 2 && systemctl --user restart admin.service"],
                 env=env,
             )
-        except Exception as e:
-            return jsonify({"ok": True, "updated": True, "msg": out,
-                            "restart": False, "warn": str(e)})
-        return jsonify({"ok": True, "updated": True, "msg": out, "restart": True})
+    except Exception as e:
+        return jsonify({"ok": True, "updated": True,
+                        "msg": f"Updated: {', '.join(updated_files)}",
+                        "restart": False, "warn": str(e)})
 
-    return jsonify({"ok": True, "updated": False, "msg": out, "restart": False})
+    msg = f"Updated: {', '.join(updated_files)}"
+    return jsonify({"ok": True, "updated": True, "msg": msg, "restart": admin_changed})
 
 
 # ── captive portal ───────────────────────────────────────────────────────────
@@ -772,14 +802,24 @@ for _path in [
 
 # ── Frontend ──────────────────────────────────────────────────────────────────
 # The full UI lives in index.html alongside this file.
-# GET / serves it directly via send_file below.
-# (no embedded HTML — index.html is served directly)
-# ── run ───────────────────────────────────────────────────────────────────────
+# GET / serves it directly; static assets (JS libs) are served by the catch-all below.
 
 @app.get("/")
 def index():
     """Serve the unified index.html UI."""
     return send_file(SCRIPT_DIR / "index.html")
+
+
+@app.get("/<path:filename>")
+def serve_static(filename):
+    """Serve static assets (JS, CSS) bundled alongside index.html."""
+    safe_extensions = (".js", ".css", ".ico", ".png", ".woff", ".woff2")
+    if not any(filename.endswith(ext) for ext in safe_extensions):
+        abort(404)
+    path = SCRIPT_DIR / filename
+    if not path.is_file():
+        abort(404)
+    return send_file(str(path))
 
 
 if __name__ == "__main__":
