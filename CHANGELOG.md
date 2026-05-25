@@ -5,6 +5,25 @@ Format: [date] — what changed and why.
 
 ---
 
+## 2026-05-24
+
+### Added
+- **Country-tap cycling** (`globe.py`) — tapping a country now steps through stations in a fixed order instead of picking randomly. Order: presets matching that country (slot 1→6) → liked stations → other stations → random API fallback. Tapping a different country or waiting 25 s resets the sequence to the top. Each tap within the sequence plays the next station ("channel button" behaviour).
+- **`build_country_playlist()`** (`globe.py`) — new function that builds the ordered playlist for a tap, resolving preset-to-country via stored `iso` field or URL/name matching against `stations.csv`.
+- **`DELETE /api/stations/by-key`** (`admin.py`) — new endpoint to remove a station by stable key (stream URL, or name if URL is empty). Used by the website when deleting stations so the Pi stays in sync.
+- **`piDelete()` helper** (`index.html`) — mirrors `piPost()` but sends a DELETE with a JSON body. Used by station deletion and future key-based removes.
+- **Pi-authoritative sync (`pollPi`)** (`index.html`) — replaces the one-shot `syncFromPi()`. Runs once on load and every 20 seconds. Reconciles local custom stations against Pi using a `_piOrigin` tag: adds Pi-side additions, updates changed fields, removes Pi-side deletions, and pushes locally-added stations up to the Pi on reconnect.
+
+### Changed
+- **`DEBOUNCE_SEC` 2.0 → 0.5** (`globe.py`) — allows deliberate "next station" taps (~1 s apart) while still suppressing the pen's accidental double-reads from a single physical touch. Added `CYCLE_RESET_SEC = 25`.
+- **`POST /api/stations` is now an upsert** (`admin.py`) — matches by URL Link first, then Radio Station name. Updates the existing row in place if found; appends only if new. Eliminates duplicate rows from repeated syncs. Returns `{ok, added, updated}`.
+- **`PUT /api/presets/<slot>`** (`admin.py`) — now accepts optional `iso` field (ISO 3166-1 alpha-2 country code), stored in `actions.json` so `globe.py` can match presets to countries without URL scanning.
+- **`saveStation()` pushes all edits to Pi** (`index.html`) — previously only new stations were sent to the Pi. Now edits to custom stations and built-in overrides are also upserted via `POST /api/stations`.
+- **`deleteCurrentEdit()` deletes from Pi** (`index.html`) — calls `DELETE /api/stations/by-key` so deletions made on the website propagate to the Pi's `stations.csv`.
+- **Preset modal captures country code** (`index.html`) — when a station is selected from the Radio Browser search in the preset modal, `s.countrycode` is stored as `_pmIso` and included in the `PUT /api/presets/<slot>` body as `iso`.
+
+---
+
 ## 2026-05-21
 
 ### Added
