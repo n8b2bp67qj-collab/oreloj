@@ -181,13 +181,32 @@ def api_stations_get():
 
 @app.post("/api/stations")
 def api_stations_post():
+    """Upsert a station by key (URL Link, then Radio Station). Safe to call repeatedly."""
     data = request.json or {}
     rows = read_csv()
-    row  = {k: data.get(k, "") for k in CSV_FIELDS}
+    incoming_url  = data.get("URL Link", "").strip()
+    incoming_name = data.get("Radio Station", "").strip()
+    idx = None
+    if incoming_url:
+        for i, r in enumerate(rows):
+            if r.get("URL Link", "").strip() == incoming_url:
+                idx = i; break
+    if idx is None and incoming_name:
+        for i, r in enumerate(rows):
+            if r.get("Radio Station", "").strip() == incoming_name:
+                idx = i; break
+    if idx is not None:
+        for k in CSV_FIELDS:
+            if k in data:
+                rows[idx][k] = data[k]
+        write_csv(rows)
+        _notify_globe()
+        return jsonify({"ok": True, "added": False, "updated": True})
+    row = {k: data.get(k, "") for k in CSV_FIELDS}
     rows.append(row)
     write_csv(rows)
     _notify_globe()
-    return jsonify({"ok": True, "index": len(rows) - 1})
+    return jsonify({"ok": True, "added": True, "updated": False})
 
 
 @app.put("/api/stations/<int:idx>")
@@ -201,6 +220,25 @@ def api_stations_put(idx):
     write_csv(rows)
     _notify_globe()
     return jsonify({"ok": True})
+
+
+@app.delete("/api/stations/by-key")
+def api_stations_delete_by_key():
+    """Delete station(s) matching the given key (URL Link or Radio Station name)."""
+    key = (request.json or {}).get("key", "").strip()
+    if not key:
+        abort(400)
+    rows = read_csv()
+    new_rows = [
+        r for r in rows
+        if r.get("URL Link", "").strip() != key
+        and r.get("Radio Station", "").strip() != key
+    ]
+    if len(new_rows) == len(rows):
+        abort(404)
+    write_csv(new_rows)
+    _notify_globe()
+    return jsonify({"ok": True, "removed": len(rows) - len(new_rows)})
 
 
 @app.delete("/api/stations/<int:idx>")
@@ -364,7 +402,7 @@ def api_presets_put(slot):
         presets.append(preset)
         data["presets"] = presets
     body = request.json or {}
-    for field in ("name", "url", "label"):
+    for field in ("name", "url", "label", "iso"):
         if field in body:
             preset[field] = body[field]
     write_actions(data)
