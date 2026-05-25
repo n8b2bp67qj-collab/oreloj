@@ -1590,6 +1590,33 @@ let rotation = [-10, -45];
 let isDragging = false, dragStart = null, rotStart = null;
 let openStation = null, openIdx = null;
 let animFrame = null;
+let _autoRotate = false, _autoRotateRAF = null;
+
+function _startAutoRotate() {
+  if (_autoRotateRAF) return;
+  let last = null;
+  function step(t) {
+    if (!_autoRotate) { _autoRotateRAF = null; return; }
+    if (last !== null) rotation[0] -= (t - last) * 0.01;
+    last = t;
+    drawGlobe();
+    _autoRotateRAF = requestAnimationFrame(step);
+  }
+  _autoRotateRAF = requestAnimationFrame(step);
+}
+
+function _stopAutoRotate() {
+  _autoRotate = false;
+  if (_autoRotateRAF) { cancelAnimationFrame(_autoRotateRAF); _autoRotateRAF = null; }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && !e.target.matches('input,textarea,select')) {
+    e.preventDefault();
+    _autoRotate = !_autoRotate;
+    if (_autoRotate) _startAutoRotate(); else _stopAutoRotate();
+  }
+});
 
 async function loadWorld() {
   const topo = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json').then(r=>r.json());
@@ -1771,6 +1798,7 @@ async function assignToPreset(slot) {
 
 // ── Globe interaction ──────────────────────────────────────────────────────
 canvas.addEventListener('mousedown', e => {
+  _stopAutoRotate();
   isDragging = false; dragStart = [e.clientX, e.clientY]; rotStart = [...rotation];
 });
 canvas.addEventListener('mousemove', e => {
@@ -1872,6 +1900,7 @@ function handleClick(e) {
 }
 
 function rotateTo(lng, lat, cb) {
+  _stopAutoRotate();
   const target = [-lng, -lat];
   const start = [...rotation];
   const t0 = performance.now();
