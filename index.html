@@ -393,6 +393,12 @@ audio { display: none; }
 .zone-edit-btn { background: none; border: none; cursor: pointer; font-size: 10px; color: #444; padding: 0 2px; line-height: 1; transition: color .15s; flex-shrink: 0; }
 .zone-edit-btn:hover { color: var(--text); }
 
+/* Live globe mirror: reflects the physical globe on the Pi */
+.si.pi-playing { box-shadow: inset 3px 0 0 #3ecf6e; }
+#badge-globe.live { color: #3ecf6e; }
+@keyframes zoneFlash { 0% { background: rgba(62,207,110,.55); } 100% { background: transparent; } }
+.zone-flash { animation: zoneFlash 1.1s ease-out; }
+
 /* Preset rows */
 .preset-row {
   padding: 7px 12px 7px 10px; border-bottom: 1px solid #1c1c1c;
@@ -1373,6 +1379,7 @@ function rebuildStations() {
 rebuildStations();
 
 let favs = new Set(); try { favs = new Set(JSON.parse(localStorage.getItem('rw_favs')||'[]')); } catch(e) {}
+let piPlayingName = null;   // station the physical globe (Pi) is currently playing
 let deadStations = new Set(); // names of stations whose stream couldn't be resolved
 let current = null, playing = false;
 let editingName = null;            // name of station being edited (null = adding)
@@ -1561,11 +1568,12 @@ function renderList() {
   const mkItem = s => {
     const isFav = favs.has(s.name);
     const isAct = current?.name===s.name;
+    const isPi = piPlayingName && piPlayingName===s.name;
     const isDead = deadStations.has(s.name);
     const safeName = s.name.replace(/'/g,"\\'");
     // Edit icon now shown for ALL stations (built-ins editable via overrides, deletable via hide flag)
     const editIcon = `<button class="icon-btn edit-icon" onclick="openModalEdit('${safeName}');event.stopPropagation()" title="Edit / delete">✎</button>`;
-    return `<div class="si ${isAct?'active':''} ${isFav?'faved':''} ${isDead?'dead':''}" onclick="sidebarClick(${s._i})">
+    return `<div class="si ${isAct?'active':''} ${isPi?'pi-playing':''} ${isFav?'faved':''} ${isDead?'dead':''}" onclick="sidebarClick(${s._i})">
       <div class="sd"></div>
       <div class="sinfo"><div class="sn">${s.name}</div><div class="sl">${s.city}, ${s.country}</div></div>
       ${editIcon}
@@ -2183,6 +2191,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   syncFromPi();      // best-effort — silently no-ops if Pi is offline
   loadCalibrationFromPi();  // load pen codes from Pi or fall back to PEN_CODE_MAP
   ghLoadStations();  // merge any stations saved to GitHub repo
+  startGlobeMirror();  // live-mirror the physical globe once connected to the Pi
 });
 
 function toggleSidebar() {
@@ -3047,6 +3056,49 @@ async function playRBForCountry(iso, countryName, regionLat, regionLng) {
   document.getElementById('pmeta').textContent = `⚠ no station found for ${countryName}`;
 }
 
+// Execute an action-zone tap in the browser so oreloj.local:5000 behaves like
+// the physical globe. Favourite changes also persist to the Pi.
+function runActionZone(action) {
+  const pm = document.getElementById('pmeta');
+  if (action === 'favourite_toggle') {
+    if (!current) { pm.textContent = '♥ nothing playing — tap a country first'; return; }
+    toggleFav(current.name);
+    pm.textContent = (favs.has(current.name) ? '★ favourited — ' : '☆ removed — ') + current.name;
+  } else if (action === 'volume_up' || action === 'volume_down') {
+    const sl = document.getElementById('vol');
+    const v = Math.max(0, Math.min(1, parseFloat(sl.value) + (action === 'volume_up' ? 0.1 : -0.1)));
+    sl.value = v; onVolume(v);
+    pm.textContent = `🔊 ${Math.round(v * 100)}%`;
+  } else if (action === 'random') {
+    playRandom();
+  } else if (action === 'stop') {
+    if (playing) audio.pause();
+    current = null; updatePlayerUI();
+    pm.textContent = '■ stopped';
+  } else if (action.startsWith('preset_')) {
+    const slot = parseInt(action.split('_')[1], 10);
+    const p = (_presetsData || []).find(x => x.slot === slot);
+    if (!p || !p.url) { pm.textContent = `preset ${slot} not set`; return; }
+    const idx = stations.findIndex(s => s.name === p.name);
+    if (idx >= 0) rotateTo(stations[idx].lng, stations[idx].lat, () => { openPopup(idx); playStation(idx); });
+    else playUrl(p.url, p.name || p.label);
+    pm.textContent = `▶ ${p.label || ('preset ' + slot)}`;
+  } else {
+    pm.textContent = `⚡ ${action}`;
+  }
+}
+
+// Play a raw stream URL (used by presets whose station isn't in the list).
+async function playUrl(url, name) {
+  if (!url) return;
+  current = { name: name || 'preset', city: '', country: '' };
+  audio.src = url;
+  audio.volume = parseFloat(document.getElementById('vol').value);
+  document.getElementById('pname').textContent = name || 'preset';
+  try { await audio.play(); playing = true; } catch (e) {}
+  updatePlayerUI(); renderList();
+}
+
 async function handlePenCode(code) {
   flashPenPill();
   _lastPenCode = code;
@@ -3055,11 +3107,11 @@ async function handlePenCode(code) {
   // If an action in the Actions panel is in Learn mode, absorb this tap
   if (await _actionLearnHandleCode(code)) return;
 
-  // Action zone — handled by Pi only; show a brief note and open assign popup
-  // so the user can reconfigure if needed (one click on the pen pill reopens it).
+  // Action zone — execute it locally so the website behaves like the physical
+  // globe. Favourite changes also persist to the Pi via /api/favourites.
   if (userActionMap[code]) {
     console.log('[pen] action zone:', code, '→', userActionMap[code]);
-    document.getElementById('pmeta').textContent = `⚡ action zone: ${userActionMap[code]}`;
+    runActionZone(userActionMap[code]);
     return;
   }
 
@@ -3190,7 +3242,7 @@ function renderZones() {
     const isTbd    = (z.code || '').startsWith('TBD');
     const dotClass = _actionDotClass(z.action);
     const actionLabel = (z.action || '').replace(/_/g, ' ');
-    return `<div class="zone-row">
+    return `<div class="zone-row" data-code="${esc(z.code)}">
       <span class="zone-dot ${dotClass}"></span>
       <span class="zone-label" title="${esc(z.description || '')}">${esc(z.label || z.code)}</span>
       <span class="zone-action ${dotClass}">${esc(actionLabel)}</span>
@@ -3772,6 +3824,86 @@ function setSysVol(v) {
   document.getElementById('sys-vol-num').textContent = v;
   clearTimeout(_sysVolTimer);
   _sysVolTimer = setTimeout(() => _sysApi('POST', '/api/volume', {level: parseInt(v)}), 300);
+}
+
+// ── Live globe mirror ───────────────────────────────────────────────────────
+// Polls /api/now (~2s) so oreloj.local:5000 reflects the physical globe: the
+// station the Pi is playing, favourite stars, output volume, and last tap.
+// Visual only — never starts browser audio, the Pi owns playback.
+let _mirror = { station: undefined, favKey: null, volume: null, lastCode: null };
+
+function updateGlobeBadge(st) {
+  const b = document.getElementById('badge-globe');
+  if (!b) return;
+  if (st && st.playing && st.station) {
+    b.textContent = '🌐 ' + st.station;
+    b.classList.add('live');
+  } else {
+    b.textContent = '● globe connected';
+    b.classList.remove('live');
+  }
+}
+
+function flashZone(code, action) {
+  const flash = el => { if (!el) return; el.classList.remove('zone-flash');
+    void el.offsetWidth; el.classList.add('zone-flash'); };
+  flash(document.querySelector(`#zones-list .zone-row[data-code="${code}"]`));
+  if (action) flash(document.getElementById('action-row-' + action));
+}
+
+async function pollGlobeState() {
+  if (accessTier < 2) return;          // only when connected to the Pi
+  const st = await piGet('/api/now');
+  if (!st) return;
+
+  // Favourites — Pi is source of truth while connected; sync the hearts.
+  if (Array.isArray(st.favourites)) {
+    const key = st.favourites.slice().sort().join('|');
+    if (key !== _mirror.favKey) {
+      _mirror.favKey = key;
+      favs = new Set(st.favourites);
+      localStorage.setItem('rw_favs', JSON.stringify([...favs]));
+      renderList(); drawGlobe();
+      if (openStation) refreshPopupIcons(openStation.name);
+    }
+  }
+
+  // Output volume — reflect on the system slider (only when it actually changed,
+  // so we don't fight a user dragging it).
+  if (typeof st.volume === 'number' && st.volume !== _mirror.volume) {
+    _mirror.volume = st.volume;
+    const vs = document.getElementById('sys-vol');
+    const vn = document.getElementById('sys-vol-num');
+    if (vs) vs.value = st.volume;
+    if (vn) vn.textContent = st.volume;
+  }
+
+  // Now playing — badge always, and on change highlight + rotate + open popup.
+  updateGlobeBadge(st);
+  const station = st.playing ? (st.station || null) : null;
+  if (station !== _mirror.station) {
+    _mirror.station = station;
+    piPlayingName = station;
+    renderList();
+    if (station) {
+      const idx = stations.findIndex(s => s.name === station);
+      if (idx >= 0) rotateTo(stations[idx].lng, stations[idx].lat, () => openPopup(idx));
+      else drawGlobe();
+    } else {
+      drawGlobe();
+    }
+  }
+
+  // Last tap — flash the matching zone/action row and pulse the pen pill.
+  if (st.last_code && st.last_code !== _mirror.lastCode) {
+    _mirror.lastCode = st.last_code;
+    flashPenPill();
+    flashZone(st.last_code, st.last_action);
+  }
+}
+
+function startGlobeMirror() {
+  setInterval(pollGlobeState, 2000);
 }
 
 // Bluetooth — scan
