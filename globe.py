@@ -5,7 +5,7 @@
 # Tap an action zone → execute action (e.g. favourite toggle) with TTS feedback.
 # Usage: python3 globe.py [--calibrate]
 
-import sys, csv, queue, time, signal, random, logging, subprocess, requests, platform, threading, json, tempfile, os
+import sys, csv, queue, time, signal, random, logging, subprocess, requests, platform, threading, json, tempfile, os, wave, math, struct
 from pathlib import Path
 
 OS = platform.system()   # 'Darwin' on Mac, 'Linux' on Pi
@@ -33,6 +33,9 @@ STATIONS_CSV = SCRIPT_DIR / "stations.csv"
 FAVS_PATH    = SCRIPT_DIR / "favourites.json"
 ACTIONS_FILE = SCRIPT_DIR / "actions.json"
 STATE_PATH   = SCRIPT_DIR / "state.json"
+SOUNDS_DIR   = SCRIPT_DIR / "sounds"
+CHIME_LIKE   = SOUNDS_DIR / "like.wav"
+CHIME_UNLIKE = SOUNDS_DIR / "unlike.wav"
 API_SERVERS  = [
     "https://de1.api.radio-browser.info",
     "https://nl1.api.radio-browser.info",
@@ -355,16 +358,71 @@ def _mpv_set_volume(vol: int) -> None:
 
 
 # ── TTS ───────────────────────────────────────────────────────────────────────
-def speak(text: str) -> None:
-    """Blocking TTS with auto-dim: lowers mpv volume while speaking, then restores."""
-    playing = _mpv is not None and _mpv.poll() is None
-    if playing:
-        _mpv_set_volume(15)
+def _tts(text: str) -> None:
+    """Run the platform TTS command (blocking). No volume handling."""
     try:
         cmd = ["say", text] if OS == 'Darwin' else ["espeak-ng", "-v", "en", "-s", "140", text]
         subprocess.run(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except FileNotFoundError:
         log.warning(f"TTS not available (tried {'say' if OS == 'Darwin' else 'espeak-ng'})")
+
+
+def speak(text: str) -> None:
+    """Blocking TTS with auto-dim: lowers mpv volume while speaking, then restores."""
+    playing = _mpv is not None and _mpv.poll() is None
+    if playing:
+        _mpv_set_volume(15)
+    _tts(text)
+    if playing:
+        _mpv_set_volume(_current_volume)
+
+
+def _write_tone_wav(path, notes, note_dur=0.13, rate=22050, vol=0.5) -> None:
+    """Synthesize a short multi-note sine 'chime' WAV (stdlib only)."""
+    frames = bytearray()
+    for freq in notes:
+        n = int(rate * note_dur)
+        for i in range(n):
+            env = min(1.0, i / (0.01 * rate), (n - i) / (0.02 * rate))  # de-click ramps
+            s = vol * env * math.sin(2 * math.pi * freq * (i / rate))
+            frames += struct.pack("<h", int(s * 32767))
+    with wave.open(str(path), "w") as w:
+        w.setnchannels(1); w.setsampwidth(2); w.setframerate(rate)
+        w.writeframes(bytes(frames))
+
+
+def _ensure_chimes() -> None:
+    """Generate the like/unlike chimes once if they don't exist yet."""
+    try:
+        SOUNDS_DIR.mkdir(exist_ok=True)
+        if not CHIME_LIKE.exists():
+            _write_tone_wav(CHIME_LIKE, [880, 1320])    # ascending = liked
+        if not CHIME_UNLIKE.exists():
+            _write_tone_wav(CHIME_UNLIKE, [660, 440])   # descending = unliked
+    except Exception as e:
+        log.warning(f"Could not generate chimes: {e}")
+
+
+def _play_chime(new_fav: bool) -> None:
+    """Play the like/unlike chime (blocking) via a short-lived mpv."""
+    path = CHIME_LIKE if new_fav else CHIME_UNLIKE
+    if not path.exists():
+        return
+    try:
+        subprocess.run(["mpv", "--no-video", "--really-quiet", str(path)],
+                       stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL, timeout=3)
+    except Exception:
+        pass
+
+
+def cue_favourite(new_fav: bool) -> None:
+    """Chime, then speak the word — ducking the radio for the whole cue."""
+    playing = _mpv is not None and _mpv.poll() is None
+    if playing:
+        _mpv_set_volume(15)
+    _play_chime(new_fav)
+    _tts("Liked" if new_fav else "Unliked")
     if playing:
         _mpv_set_volume(_current_volume)
 
@@ -420,9 +478,8 @@ def toggle_favourite(curated: dict[str, list[dict]]) -> None:
                 if s["name"] == name:
                     s["favourite"] = new_fav
 
-        msg = "Favourite" if new_fav else "Not favourite anymore"
         log.info(f"★  {name} → {'favourite' if new_fav else 'not favourite'}")
-        speak(msg)
+        cue_favourite(new_fav)
 
     except Exception as e:
         log.error(f"Favourite toggle error: {e}")
@@ -573,6 +630,7 @@ def main() -> None:
     curated = load_stations(STATIONS_CSV)
     load_actions()
     load_calibration()
+    _ensure_chimes()
 
     if OS == 'Darwin':
         listener = kb.Listener(on_press=_on_press)
