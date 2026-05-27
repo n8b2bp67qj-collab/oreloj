@@ -15,7 +15,7 @@ Europe,UK,Glasgow,Subcity Radio,Independent station from the University of Glasg
 Europe,Ireland,Dublin,Dublin Digital Radio,"Ireland's independent underground station. Arts, music and community from the Irish capital.",https://www.dublindigitalradio.com,,,53.34,-6.27
 Europe,France,Paris,FIP,"France's most eclectic radio. Jazz, soul, world — no genre barriers, no ads. An institution.",https://radiofrance.fr/fip,https://icecast.radiofrance.fr/fip-midfi.mp3,,48.87,2.35
 Europe,France,Montpellier,Pinata Radio,Montpellier's colourful independent radio. Eclectic electronic music and festive vibes from the South.,https://pinataradio.com,https://listen.radioking.com/radio/96031/stream/906306,,43.61,3.87
-Europe,France,Lyon,LYL Radio,"Lyon's cult independent station. Disco, experimental, techno and world — live since 2018.",https://lyl.live,https://icecast.lyl.live/live,,45.75,4.85
+Europe,France,Lyon,LYL Radio,"Lyon's cult independent station. Disco, experimental, techno and world — live since 2018.",https://lyl.live,https://icecast.lyl.live/live,yes,45.75,4.85
 Europe,France,Grenoble,RTL3,"Radio indépendante au Couvent des Minimes, Grenoble. Musiques électroniques et scène locale alpine.",https://rtl3.fr,https://rtl3.radiocult.fm/stream,,45.188,5.724
 Europe,France,Paris,Le Mellotron,"Parisian global music radio since 2007. Soul, jazz, funk, world — always exigeant.",https://lemellotron.com,,,48.87,2.36
 Europe,France,Nantes,Radio DY10,"Nantes-based station. Balearic, tropical sounds, dance music and trippy electronic.",https://radiody10.com,,,47.22,-1.55
@@ -53,7 +53,7 @@ Oceania,New Zealand,Wellington,RNZ Concert,New Zealand's classical and arts broa
 North America,USA,New York,The Lot Radio,Brooklyn's outdoor broadcast from a parking lot. Diverse and adventurous programming.,https://thelotradio.com,,,40.72,-74.01
 North America,USA,Seattle,KEXP,Seattle's legendary independent music radio. Home to the best live sessions online.,https://kexp.org,https://kexp-mp3-128.streamguys1.com/kexp128.mp3,,47.62,-122.35
 North America,USA,Los Angeles,Dublab,"Future roots music from LA. Organic, exploratory and non-commercial since 1999.",https://dublab.com,,,34.05,-118.24
-North America,USA,San Francisco,SOMA FM,Listener-supported commercial-free streams. Multiple channels of hand-curated electronica.,https://somafm.com,https://ice1.somafm.com/groovesalad-128-mp3,,37.78,-122.42
+North America,USA,San Francisco,SOMA FM,Listener-supported commercial-free streams. Multiple channels of hand-curated electronica.,https://somafm.com,https://ice1.somafm.com/groovesalad-128-mp3,yes,37.78,-122.42
 North America,USA,New York,Radio Free Brooklyn,"Non-profit community station from Brooklyn since 2015. Underground bands, indie artists.",https://radioFreebrooklyn.com,,,40.71,-73.94
 North America,USA,Portland,X-Ray FM,"Portland's community radio curated by locals — journalists, comedians, musicians.",https://xray.fm,https://listen.xray.fm/stream,,45.52,-122.67
 North America,USA,New York,Newtown Radio,"Brooklyn community radio from a neighbourhood record shop. Local artists, global music.",https://newtownradio.com,,,40.71,-73.93
