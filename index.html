@@ -1043,6 +1043,25 @@ function _parseCsvLine(line) {
   return cols;
 }
 
+// Parse a whole CSV document into rows, honouring quoted fields that contain
+// commas OR newlines (RFC-4180). Naive line-splitting breaks on multi-line
+// descriptions and spawns phantom stations.
+function _parseCsvRows(text) {
+  const rows = []; let row = [], cur = '', inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQ) {
+      if (ch === '"') { if (text[i+1] === '"') { cur += '"'; i++; } else inQ = false; }
+      else cur += ch;
+    } else if (ch === '"') { inQ = true; }
+    else if (ch === ',') { row.push(cur); cur = ''; }
+    else if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
+    else if (ch !== '\r') { cur += ch; }
+  }
+  if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+  return rows;
+}
+
 // Country-center fallback coordinates for ghLoadStations (country name → [lat, lng])
 const _COUNTRY_CENTERS = {
   'mexico':[23.63,-102.55],'México':[23.63,-102.55],'Mexico':[23.63,-102.55],
@@ -1102,18 +1121,19 @@ const _COUNTRY_CENTERS = {
 async function ghLoadStations() {
   const f = await ghGetFile('stations.csv');
   if (!f?.text) return;
-  const lines = f.text.split('\n').filter(l => l.trim());
-  if (lines.length < 2) return;
+  const rows = _parseCsvRows(f.text);
+  if (rows.length < 2) return;
   const builtinUrls = new Set(BUILT_IN.map(s => s.stream).filter(Boolean));
   const builtinNames = new Set(BUILT_IN.map(s => s.name));
   const existingUrls = new Set(custom.map(s => s.stream));
   let changed = false;
-  for (let i = 1; i < lines.length; i++) {
-    const c = _parseCsvLine(lines[i]);
+  for (let i = 1; i < rows.length; i++) {
+    const c = rows[i];
     if (c.length < 7) continue;
     const [, country, city, name, desc, web, stream, fav, rawLat, rawLng] = c;
     if (!name || !stream) continue;
     if (builtinUrls.has(stream) || builtinNames.has(name)) {
+      _builtinStreamFix[name] = stream;   // let a streamless BUILT_IN use the CSV stream
       if (fav === 'yes' || fav === 'TRUE' || fav === 'true') { favs.add(name); changed = true; }
       continue;
     }
@@ -1368,11 +1388,19 @@ let builtinOverrides = {};
 try { builtinOverrides = JSON.parse(localStorage.getItem('rw_overrides')||'{}'); } catch(e) {}
 
 let stations = [];
+// Streams pulled from the Pi/CSV for BUILT_IN entries that ship without one.
+let _builtinStreamFix = {};
 function rebuildStations() {
   const visible = [];
   for (const b of BUILT_IN) {
     if (hiddenBuiltIns.has(b.name)) continue;
-    visible.push(builtinOverrides[b.name] || b);
+    const entry = builtinOverrides[b.name] || b;
+    // Backfill a stream from the Pi/CSV if this built-in ships without one.
+    if (!entry.stream && _builtinStreamFix[entry.name]) {
+      visible.push({ ...entry, stream: _builtinStreamFix[entry.name] });
+    } else {
+      visible.push(entry);
+    }
   }
   // Exclude custom entries whose name is already in BUILT_IN — prevents duplicate
   // map markers when a station was Pi-synced before being added to BUILT_IN.
@@ -2129,6 +2157,7 @@ async function syncFromPi() {
     let added = 0;
     for (const ps of piStations) {
       if (!ps.name || !ps.stream) continue;
+      _builtinStreamFix[ps.name] = ps.stream;   // lets streamless BUILT_INs play the CSV stream
       if (existingNames.has(ps.name)) {
         // Update coords if Pi has better ones than what's cached in localStorage
         if (ps.lat || ps.lng) {
@@ -2154,10 +2183,8 @@ async function syncFromPi() {
       });
       added++;
     }
-    if (added) {
-      localStorage.setItem('rw_custom', JSON.stringify(custom));
-      rebuildStations();
-    }
+    if (added) localStorage.setItem('rw_custom', JSON.stringify(custom));
+    rebuildStations();   // always rebuild so backfilled streams take effect
   }
 
   if (piFavs || piStations) { renderList(); drawGlobe(); }
@@ -2622,6 +2649,31 @@ const STATION_COUNTRY_TO_ISO = {
   "canada":"CA",
   "brazil":"BR",
   "argentina":"AR",
+  "mexico":"MX",
+  "nigeria":"NG",
+  "syria":"SY",
+  "bolivia":"BO",
+  "chile":"CL",
+  "colombia":"CO",
+  "costa rica":"CR",
+  "cuba":"CU",
+  "dominican republic":"DO",
+  "ecuador":"EC",
+  "el salvador":"SV",
+  "guatemala":"GT",
+  "guyana":"GY",
+  "french guyana":"GF","french guiana":"GF",
+  "suriname":"SR",
+  "haiti":"HT",
+  "honduras":"HN",
+  "jamaica":"JM",
+  "nicaragua":"NI",
+  "panama":"PA",
+  "paraguay":"PY",
+  "peru":"PE",
+  "venezuela":"VE",
+  "bahamas":"BS",
+  "belize":"BZ",
 };
 
 function isoOfStation(s) {
