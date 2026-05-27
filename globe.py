@@ -32,6 +32,7 @@ SCRIPT_DIR   = Path(__file__).parent
 STATIONS_CSV = SCRIPT_DIR / "stations.csv"
 FAVS_PATH    = SCRIPT_DIR / "favourites.json"
 ACTIONS_FILE = SCRIPT_DIR / "actions.json"
+STATE_PATH   = SCRIPT_DIR / "state.json"
 API_SERVERS  = [
     "https://de1.api.radio-browser.info",
     "https://nl1.api.radio-browser.info",
@@ -302,6 +303,8 @@ def resolve_stream(iso_list: list[str], curated: dict[str, list[dict]]) -> tuple
 
 _mpv: subprocess.Popen | None = None
 _current_station: str | None = None  # name of currently playing station
+_last_code:   str | None = None      # last pen code handled (mirrored to UI)
+_last_action: str | None = None      # last action run, or None for a country tap
 
 def play(url: str, name: str | None = None) -> None:
     global _mpv, _current_station
@@ -309,6 +312,7 @@ def play(url: str, name: str | None = None) -> None:
         _mpv.terminate(); _mpv.wait()
     _mpv = subprocess.Popen(MPV_CMD + [url], stdin=subprocess.DEVNULL)
     _current_station = name
+    _write_state()
 
 def stop() -> None:
     global _mpv, _current_station
@@ -316,6 +320,26 @@ def stop() -> None:
         _mpv.terminate(); _mpv.wait()
     _mpv = None
     _current_station = None
+    _write_state()
+
+
+def _write_state() -> None:
+    """Mirror the globe's live state to state.json so the admin UI can poll it.
+    Best-effort and atomic — a failure here must never disrupt playback."""
+    try:
+        data = {
+            "playing":     _mpv is not None and _mpv.poll() is None,
+            "station":     _current_station,
+            "volume":      _current_volume,
+            "last_code":   _last_code,
+            "last_action": _last_action,
+            "updated_at":  time.time(),
+        }
+        tmp = Path(str(STATE_PATH) + ".tmp")
+        tmp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(STATE_PATH)
+    except Exception as e:
+        log.debug(f"Could not write state.json: {e}")
 
 
 # ── Volume control via mpv IPC ────────────────────────────────────────────────
@@ -537,6 +561,7 @@ def calibrate() -> None:
 
 
 def main() -> None:
+    global _last_code, _last_action
     calibrate_mode = "--calibrate" in sys.argv
 
     def shutdown(sig, _frame):
@@ -559,6 +584,8 @@ def main() -> None:
     if calibrate_mode:
         calibrate(); return
 
+    _write_state()   # publish initial (idle) state for the admin UI
+
     last_code:    str | None = None
     last_trigger: float      = 0.0
 
@@ -574,17 +601,23 @@ def main() -> None:
 
         last_code    = code
         last_trigger = now
+        _last_code   = code
 
         # Check action zones first
         action = ACTION_MAP.get(code)
         if action:
+            _last_action = action
             log.info(f"Tap → ACTION:{action}  ({code})")
             dispatch_action(action, curated)
+            _write_state()
             continue
 
+        _last_action = None
         entries = CODE_MAP.get(code)
         if not entries:
-            log.debug(f"Unknown code {code}"); continue
+            log.debug(f"Unknown code {code}")
+            _write_state()
+            continue
 
         iso_list = [e[1] for e in entries]
         label    = _entries_to_label(entries)
@@ -597,6 +630,7 @@ def main() -> None:
             play(url, name)
         else:
             log.warning(f"No stream for {label}")
+            _write_state()
 
 
 if __name__ == "__main__":
