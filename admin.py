@@ -24,6 +24,7 @@ def _build_time() -> str:
 STATIONS_CSV     = SCRIPT_DIR / "stations.csv"
 FAVS_PATH        = SCRIPT_DIR / "favourites.json"
 ACTIONS_FILE     = SCRIPT_DIR / "actions.json"
+STATE_FILE       = SCRIPT_DIR / "state.json"
 CALIBRATION_CSV  = SCRIPT_DIR / "calibration.csv"
 CAL_FIELDS       = ["code", "country_iso", "country_name", "region", "lat", "lng"]
 CSV_FIELDS   = ["Continent", "Country", "City", "Radio Station",
@@ -170,6 +171,22 @@ def api_status():
 
     return jsonify({"playing": playing, "bt": bt, "wifi": wifi,
                     "hotspot_mode": hotspot_mode, "build_time": _build_time()})
+
+
+@app.get("/api/now")
+def api_now():
+    """Lightweight live-state mirror for the admin UI to poll (~2 s).
+    Reads state.json written by globe.py on every tap — pure file read, no
+    subprocess calls, so it's cheap enough to hit frequently."""
+    state = {"playing": False, "station": None, "volume": None,
+             "last_code": None, "last_action": None, "updated_at": None}
+    if STATE_FILE.exists():
+        try:
+            state.update(json.loads(STATE_FILE.read_text(encoding="utf-8")))
+        except Exception:
+            pass
+    state["favourites"] = read_favs()
+    return jsonify(state)
 
 
 # ── API: stations ─────────────────────────────────────────────────────────────
