@@ -293,6 +293,9 @@ body {
 .pop-preset-picker .ppp-label { font-size:9px; color:var(--muted); margin-right:2px; white-space:nowrap; }
 .pop-preset-slot { background:none; border:1px solid var(--border); color:var(--muted); cursor:pointer; font-family:'Space Mono',monospace; font-size:10px; padding:2px 6px; transition:color .12s,border-color .12s; }
 .pop-preset-slot:hover { color:var(--text); border-color:var(--text); }
+.pop-preset-slot.assigned { background:var(--red); color:#fff; border-color:var(--red); }
+.pop-preset-slot.occupied { color:var(--text); border-color:var(--muted); }
+.pop-preset-badge { display:inline-block; font-size:9px; color:var(--red); font-family:'Space Mono',monospace; border:1px solid var(--red); border-radius:2px; padding:1px 5px; margin-bottom:6px; letter-spacing:.3px; }
 .pop-preset-confirm { font-size:9px; color:#7db87d; font-style:italic; display:none; }
 
 /* ── Modal ── */
@@ -1716,16 +1719,28 @@ function openPopup(idx) {
   const safeName = s.name.replace(/'/g,"\\'");
   // Edit icon shown for all stations (built-ins editable via override, deletable via hide flag)
   const editBtn = `<button class="pop-icon" onclick="openModalEdit('${safeName}')" title="Edit / delete">✎</button>`;
+  // Highlight which preset slot(s) already hold this station.
+  const _slotName = {};
+  (_presetsData || []).forEach(p => { if (p && p.name) _slotName[p.slot] = p.name; });
+  const myPresets = [1,2,3,4,5,6].filter(n => _slotName[n] === s.name);
+  const presetBadge = myPresets.length
+    ? `<div class="pop-preset-badge">📌 saved as preset ${myPresets.join(', ')}</div>`
+    : '';
   const presetBtn = accessTier >= 2
     ? `<button class="pop-icon" onclick="togglePopPresetPicker()" title="Save to preset">📌</button>`
     : '';
-  const presetSlots = [1,2,3,4,5,6].map(n =>
-    `<button class="pop-preset-slot" onclick="assignToPreset(${n})">${n}</button>`
-  ).join('');
+  const presetSlots = [1,2,3,4,5,6].map(n => {
+    const here = _slotName[n] === s.name;
+    const occ  = _slotName[n] && !here;
+    const cls  = here ? 'pop-preset-slot assigned' : (occ ? 'pop-preset-slot occupied' : 'pop-preset-slot');
+    const tip  = _slotName[n] ? `preset ${n}: ${_slotName[n]}` : `assign to preset ${n}`;
+    return `<button class="${cls}" title="${esc(tip)}" onclick="assignToPreset(${n})">${n}</button>`;
+  }).join('');
   document.getElementById('popup-inner').innerHTML = `
     <div class="pop-header">
       <div class="pop-name">${s.name}</div>
     </div>
+    ${presetBadge}
     <div class="pop-row">
       <div class="pop-loc">${s.city}, ${s.country}</div>
       ${editBtn}
