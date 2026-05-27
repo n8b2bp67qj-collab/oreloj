@@ -3071,6 +3071,40 @@ async function playRBForCountry(iso, countryName, regionLat, regionLng) {
   document.getElementById('pmeta').textContent = `⚠ no station found for ${countryName}`;
 }
 
+// Audio cue for like/unlike — a two-note chime then the spoken word, ducking
+// the player while it plays. Mirrors the Pi (globe.py cue_favourite).
+function playFavCue(liked) {
+  let restored = false;
+  const prevVol = audio.volume;
+  const restore = () => { if (!restored) { restored = true; audio.volume = prevVol; } };
+  try {
+    const ctx = getCtx();
+    const now = ctx.currentTime;
+    audio.volume = Math.min(prevVol, 0.15);   // duck the radio
+    const notes = liked ? [880, 1320] : [660, 440];  // ascending=like, descending=unlike
+    notes.forEach((f, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      const t0 = now + i * 0.12;
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(0.25, t0 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.11);
+      o.connect(g).connect(ctx.destination);
+      o.start(t0); o.stop(t0 + 0.12);
+    });
+    setTimeout(() => {
+      try {
+        const u = new SpeechSynthesisUtterance(liked ? 'Liked' : 'Unliked');
+        u.rate = 1.05;
+        u.onend = restore; u.onerror = restore;
+        speechSynthesis.cancel();
+        speechSynthesis.speak(u);
+        setTimeout(restore, 1500);   // safety net if speech events don't fire
+      } catch (e) { restore(); }
+    }, 260);
+  } catch (e) { restore(); }
+}
+
 // Execute an action-zone tap in the browser so oreloj.local:5000 behaves like
 // the physical globe. Favourite changes also persist to the Pi.
 function runActionZone(action) {
@@ -3078,7 +3112,9 @@ function runActionZone(action) {
   if (action === 'favourite_toggle') {
     if (!current) { pm.textContent = '♥ nothing playing — tap a country first'; return; }
     toggleFav(current.name);
-    pm.textContent = (favs.has(current.name) ? '★ favourited — ' : '☆ removed — ') + current.name;
+    const liked = favs.has(current.name);
+    playFavCue(liked);
+    pm.textContent = (liked ? '★ favourited — ' : '☆ removed — ') + current.name;
   } else if (action === 'volume_up' || action === 'volume_down') {
     const sl = document.getElementById('vol');
     const v = Math.max(0, Math.min(1, parseFloat(sl.value) + (action === 'volume_up' ? 0.1 : -0.1)));
