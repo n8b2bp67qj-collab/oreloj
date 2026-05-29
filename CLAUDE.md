@@ -32,7 +32,7 @@ Oreloj is a hacked Oregon Scientific Horizon globe that plays live web radio fro
 
 ### Two Pi services, loosely coupled via shared files
 
-**globe.py** reads pen codes via evdev (Pi) or pynput (Mac, for dev). Resolves against CODE_MAP (250+ entries). Station priority: favourites.json → curated → Radio Browser API. Plays via mpv + Unix socket. Actions dispatched from ACTION_MAP (volume up/down, random, stop, 6 presets, favourite_toggle).
+**globe.py** reads pen codes via evdev (Pi) or pynput (Mac, for dev). Resolves against CODE_MAP (250+ entries). Station priority: favourites.json → curated → Radio Browser API. Plays via mpv + Unix socket. Actions dispatched from ACTION_MAP (volume up/down, discover, random love, stop, 6 presets, favourite_toggle).
 
 **admin.py** serves `index.html` directly and exposes a REST API. Key endpoints: `/api/stations`, `/api/stations/json`, `/api/favourites`, `/api/zones`, `/api/presets`, `/api/bt/*`, `/api/wifi/*`, `/api/status`, `/api/volume`, `/api/sync`, `/api/update`. Calls `_notify_globe()` after data writes to hot-reload globe.py.
 
@@ -79,7 +79,7 @@ Codes starting with `TBD_` are skipped at runtime — assign real codes via cali
 
 ## Active development priorities
 
-1. **Calibrate action zones** — assign real codes to the 9 TBD zones (volume up/down, random, presets 1–6)
+1. **Calibrate action zones** — assign real codes to the 10 TBD zones (volume up/down, discover, random love, presets 1–6)
 2. **Set 6 presets** — open admin UI → Presets panel, assign stations to slots 1–6
 3. **Push to GitHub** — delete `.git/index.lock` then `git add . && git commit -m "..." && git push`
 4. **Add radio stations** — build up stations.csv before shipping
