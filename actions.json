@@ -1,26 +1,154 @@
 {
   "zones": [
-    {"code": "a0337f", "action": "favourite_toggle", "label": "Zone A", "description": "", "position": null},
-    {"code": "a0137f", "action": "favourite_toggle", "label": "Zone B", "description": "", "position": null},
-    {"code": "a0338f", "action": "favourite_toggle", "label": "Zone C", "description": "", "position": null},
-    {"code": "a0342f", "action": "favourite_toggle", "label": "Zone D", "description": "", "position": null},
-    {"code": "a0308f", "action": "favourite_toggle", "label": "Zone E", "description": "", "position": null},
-    {"code": "TBD_1", "action": "volume_up", "label": "Volume Up", "description": "Tap to increase volume by 10", "position": null},
-    {"code": "TBD_2", "action": "volume_down", "label": "Volume Down", "description": "Tap to decrease volume by 10", "position": null},
-    {"code": "TBD_3", "action": "random", "label": "Random Station", "description": "Tap for a surprise radio station", "position": null},
-    {"code": "TBD_4", "action": "preset_1", "label": "Preset 1", "description": "", "position": null},
-    {"code": "TBD_5", "action": "preset_2", "label": "Preset 2", "description": "", "position": null},
-    {"code": "TBD_6", "action": "preset_3", "label": "Preset 3", "description": "", "position": null},
-    {"code": "TBD_7", "action": "preset_4", "label": "Preset 4", "description": "", "position": null},
-    {"code": "TBD_8", "action": "preset_5", "label": "Preset 5", "description": "", "position": null},
-    {"code": "TBD_9", "action": "preset_6", "label": "Preset 6", "description": "", "position": null}
+    {
+      "code": "a0337f",
+      "action": "favourite_toggle",
+      "label": "Zone A",
+      "description": "",
+      "position": null
+    },
+    {
+      "code": "a0137f",
+      "action": "favourite_toggle",
+      "label": "Zone B",
+      "description": "",
+      "position": null
+    },
+    {
+      "code": "a0338f",
+      "action": "favourite_toggle",
+      "label": "Zone C",
+      "description": "",
+      "position": null
+    },
+    {
+      "code": "a0342f",
+      "action": "favourite_toggle",
+      "label": "Zone D",
+      "description": "",
+      "position": null
+    },
+    {
+      "code": "a0308f",
+      "action": "favourite_toggle",
+      "label": "Zone E",
+      "description": "",
+      "position": null
+    },
+    {
+      "code": "a0404f",
+      "action": "volume_up",
+      "label": "Volume Up",
+      "description": "Tap to increase volume by 10",
+      "position": null
+    },
+    {
+      "code": "a0405f",
+      "action": "volume_down",
+      "label": "Volume Down",
+      "description": "Tap to decrease volume by 10",
+      "position": null
+    },
+    {
+      "code": "a0413f",
+      "action": "discover",
+      "label": "Discover",
+      "description": "Tap for a surprise radio station",
+      "position": null
+    },
+    {
+      "code": "a0408f",
+      "action": "preset_1",
+      "label": "Preset 1",
+      "description": "",
+      "position": null
+    },
+    {
+      "code": "a0409f",
+      "action": "preset_2",
+      "label": "Preset 2",
+      "description": "",
+      "position": null
+    },
+    {
+      "code": "a0350f",
+      "action": "preset_3",
+      "label": "Preset 3",
+      "description": "",
+      "position": null
+    },
+    {
+      "code": "a0424f",
+      "action": "preset_4",
+      "label": "Preset 4",
+      "description": "",
+      "position": null
+    },
+    {
+      "code": "a0387f",
+      "action": "preset_5",
+      "label": "Preset 5",
+      "description": "",
+      "position": null
+    },
+    {
+      "code": "a0422f",
+      "action": "preset_6",
+      "label": "Preset 6",
+      "description": "",
+      "position": null
+    },
+    {
+      "code": "a0760f",
+      "action": "stop",
+      "label": "■ Stop",
+      "description": "",
+      "position": null
+    },
+    {
+      "code": "TBD_random_love",
+      "action": "random_love",
+      "label": "Random Love",
+      "description": "Tap for a random favourite station",
+      "position": null
+    }
   ],
   "presets": [
-    {"slot": 1, "name": "", "url": "", "label": "Preset 1"},
-    {"slot": 2, "name": "", "url": "", "label": "Preset 2"},
-    {"slot": 3, "name": "", "url": "", "label": "Preset 3"},
-    {"slot": 4, "name": "", "url": "", "label": "Preset 4"},
-    {"slot": 5, "name": "", "url": "", "label": "Preset 5"},
-    {"slot": 6, "name": "", "url": "", "label": "Preset 6"}
+    {
+      "slot": 1,
+      "name": "Worldwide FM",
+      "url": "https://worldwide-fm.radiocult.fm/stream",
+      "label": "Preset 1"
+    },
+    {
+      "slot": 2,
+      "name": "NTS Radio",
+      "url": "https://stream-relay-geo.ntslive.net/stream",
+      "label": "Preset 2"
+    },
+    {
+      "slot": 3,
+      "name": "Refuge Worldwide",
+      "url": "https://streaming.radio.co/s3699c5e49/listen",
+      "label": "Preset 3"
+    },
+    {
+      "slot": 4,
+      "name": "Radio Alhara",
+      "url": "https://stream.radiojar.com/78cxy6wkxtzuv?1779737351",
+      "label": "Preset 4"
+    },
+    {
+      "slot": 5,
+      "name": "El Recreo FM",
+      "url": "https://stream.zeno.fm/wju2nzhalbztv",
+      "label": "Preset 5"
+    },
+    {
+      "slot": 6,
+      "name": "Oroko Radio",
+      "url": "https://oroko-radio.radiocult.fm/stream",
+      "label": "Preset 6"
+    }
   ]
 }
