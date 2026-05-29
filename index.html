@@ -1386,6 +1386,15 @@ function fillRB(enc) {
 
 // ── State ─────────────────────────────────────────────────────────────────
 let custom = []; try { custom = JSON.parse(localStorage.getItem('rw_custom')||'[]'); } catch(e) {}
+// Sanitize cached stations: a corrupt CSV row can get ingested as a "station"
+// (e.g. a malformed line parsed into name/stream fields). A real station's
+// stream is an http(s) URL; streamless entries are valid (they use the API).
+// Drop anything else and re-persist so the junk doesn't linger across reloads.
+{
+  const before = custom.length;
+  custom = custom.filter(s => { const u = (s && s.stream || '').trim(); return u === '' || /^https?:\/\//i.test(u); });
+  if (custom.length !== before) localStorage.setItem('rw_custom', JSON.stringify(custom));
+}
 let hiddenBuiltIns = new Set();
 try { hiddenBuiltIns = new Set(JSON.parse(localStorage.getItem('rw_hidden_builtin')||'[]')); } catch(e) {}
 let builtinOverrides = {};
