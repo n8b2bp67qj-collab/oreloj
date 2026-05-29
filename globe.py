@@ -36,6 +36,8 @@ STATE_PATH   = SCRIPT_DIR / "state.json"
 SOUNDS_DIR   = SCRIPT_DIR / "sounds"
 CHIME_LIKE   = SOUNDS_DIR / "like.wav"
 CHIME_UNLIKE = SOUNDS_DIR / "unlike.wav"
+CHIME_VOL_UP   = SOUNDS_DIR / "vol_up.wav"
+CHIME_VOL_DOWN = SOUNDS_DIR / "vol_down.wav"
 API_SERVERS  = [
     "https://de1.api.radio-browser.info",
     "https://nl1.api.radio-browser.info",
@@ -403,13 +405,16 @@ def _ensure_chimes() -> None:
             _write_tone_wav(CHIME_LIKE, [880, 1320])    # ascending = liked
         if not CHIME_UNLIKE.exists():
             _write_tone_wav(CHIME_UNLIKE, [660, 440])   # descending = unliked
+        if not CHIME_VOL_UP.exists():
+            _write_tone_wav(CHIME_VOL_UP, [988, 1319], note_dur=0.07)    # short ascending blip
+        if not CHIME_VOL_DOWN.exists():
+            _write_tone_wav(CHIME_VOL_DOWN, [1319, 988], note_dur=0.07)  # short descending blip
     except Exception as e:
         log.warning(f"Could not generate chimes: {e}")
 
 
-def _play_chime(new_fav: bool) -> None:
-    """Play the like/unlike chime (blocking) via a short-lived mpv."""
-    path = CHIME_LIKE if new_fav else CHIME_UNLIKE
+def _play_wav(path) -> None:
+    """Play a short WAV (blocking) via a short-lived mpv."""
     if not path.exists():
         return
     try:
@@ -425,8 +430,21 @@ def cue_favourite(new_fav: bool) -> None:
     playing = _mpv is not None and _mpv.poll() is None
     if playing:
         _mpv_set_volume(15)
-    _play_chime(new_fav)
+    _play_wav(CHIME_LIKE if new_fav else CHIME_UNLIKE)
     _tts("Liked" if new_fav else "Unliked")
+    if playing:
+        _mpv_set_volume(_current_volume)
+
+
+def cue_volume(up: bool) -> None:
+    """Pi: short blip (ducking the radio). Mac dev: spoken word."""
+    if OS == 'Darwin':
+        speak("volume up" if up else "volume down")
+        return
+    playing = _mpv is not None and _mpv.poll() is None
+    if playing:
+        _mpv_set_volume(15)
+    _play_wav(CHIME_VOL_UP if up else CHIME_VOL_DOWN)
     if playing:
         _mpv_set_volume(_current_volume)
 
@@ -504,13 +522,13 @@ def dispatch_action(action: str, curated: dict[str, list[dict]]) -> None:
     elif action == "volume_up":
         _current_volume = min(100, _current_volume + 10)
         _mpv_set_volume(_current_volume)
-        speak("volume up")
+        cue_volume(True)
         log.info(f"Volume → {_current_volume}")
 
     elif action == "volume_down":
         _current_volume = max(0, _current_volume - 10)
         _mpv_set_volume(_current_volume)
-        speak("volume down")
+        cue_volume(False)
         log.info(f"Volume → {_current_volume}")
 
     elif action == "discover":
