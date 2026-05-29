@@ -79,12 +79,13 @@ body {
 }
 #exportbtn:hover { border-color: var(--text); color: var(--text); }
 @media (max-width: 550px) { #exportbtn { display: none; } }
-#randombtn {
+#discoverbtn, #lovebtn {
   background: transparent; border: 1px dashed var(--border); color: var(--muted);
   padding: 7px 10px; border-radius: 2px; font-family: 'Space Mono', monospace;
   font-size: 10px; cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: all .15s;
 }
-#randombtn:hover { border-color: var(--text); color: var(--text); }
+#discoverbtn:hover { border-color: var(--text); color: var(--text); }
+#lovebtn:hover { border-color: var(--red); color: var(--red); }
 
 /* ── Export modal ── */
 #export-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.8); z-index: 9998; display: none; align-items: center; justify-content: center; }
@@ -382,14 +383,14 @@ audio { display: none; }
 .zone-dot.volume   { background: #2b6dd4; }
 .zone-dot.preset   { background: #d48e2b; }
 .zone-dot.favourite{ background: var(--red); }
-.zone-dot.random   { background: #3ecf6e; }
+.zone-dot.discover { background: #3ecf6e; }
 .zone-dot.stop     { background: #555; }
 .zone-label  { flex: 1; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .zone-action { font-size: 9px; color: #fff; white-space: nowrap; flex-shrink: 0; padding: 1px 5px; border-radius: 2px; font-style: italic; }
 .zone-action.volume   { background: #2b6dd4; }
 .zone-action.preset   { background: #d48e2b; }
 .zone-action.favourite{ background: var(--red); }
-.zone-action.random   { background: #3ecf6e; color: #000; }
+.zone-action.discover { background: #3ecf6e; color: #000; }
 .zone-action.stop     { background: #444; }
 .zone-code   { font-size: 8px; color: #3a3a3a; font-style: italic; flex-shrink: 0; }
 .tbd-badge   { font-size: 8px; color: #555; border: 1px dashed #333; padding: 1px 4px; border-radius: 1px; flex-shrink: 0; }
@@ -545,7 +546,8 @@ audio { display: none; }
   <div id="pen-pill" title="SmartGlobe pen ready — tap a country">
     <span class="pen-dot"></span><span>pen</span>
   </div>
-  <button id="randombtn" onclick="playRandom()" title="Play a random station">⚄ random</button>
+  <button id="discoverbtn" onclick="playDiscover()" title="Discover a random station">⚄ discover</button>
+  <button id="lovebtn" onclick="playRandomLove()" title="Play a random favourite station">♥ random love</button>
   <button id="exportbtn" onclick="openExport()" title="Export pen mappings + radio stations">⤓ data</button>
   <button id="addbtn" onclick="openModal()">+ add radio</button>
 </div>
@@ -801,7 +803,8 @@ audio { display: none; }
       <div style="display:flex;flex-wrap:wrap;gap:5px;" id="zm-action-btns">
         <button class="zm-act" data-action="favourite_toggle">♥ favourite</button>
         <button class="zm-act" data-action="stop">■ stop</button>
-        <button class="zm-act" data-action="random">⚄ random</button>
+        <button class="zm-act" data-action="discover">⚄ discover</button>
+        <button class="zm-act" data-action="random_love">♥ random love</button>
         <button class="zm-act" data-action="volume_up">▲ vol up</button>
         <button class="zm-act" data-action="volume_down">▼ vol down</button>
         <button class="zm-act" data-action="preset_1">① preset 1</button>
@@ -852,7 +855,8 @@ audio { display: none; }
     <div class="assign-action-row">
       <button class="assign-action-btn" id="action-btn-favourite_toggle" onclick="selectAction('favourite_toggle')">♥ favourite</button>
       <button class="assign-action-btn" id="action-btn-stop" onclick="selectAction('stop')">■ stop</button>
-      <button class="assign-action-btn" id="action-btn-random" onclick="selectAction('random')">⚄ random</button>
+      <button class="assign-action-btn" id="action-btn-discover" onclick="selectAction('discover')">⚄ discover</button>
+      <button class="assign-action-btn" id="action-btn-random_love" onclick="selectAction('random_love')">♥ random love</button>
     </div>
     <div class="assign-action-row">
       <button class="assign-action-btn" id="action-btn-volume_up" onclick="selectAction('volume_up')">▲ vol up</button>
@@ -1199,7 +1203,7 @@ const BUILT_IN = [
   {name:"Aaja Music",city:"London",country:"UK",lat:51.52,lng:-0.08,web:"https://aaja.app",desc:"London music bar turned streaming space. Intimate live sets broadcast to the world."},
   {name:"Netil Radio",city:"London",country:"UK",lat:51.54,lng:-0.06,web:"https://netilradio.com",desc:"Community radio from a shipping container in London Fields, Hackney."},
   {name:"Do!! You!!! Radio",city:"London",country:"UK",lat:51.53,lng:-0.1,web:"https://doyouworld.com",desc:"London community radio where music discovery comes first. Pure love of music."},
-  {name:"Subcity Radio",city:"Glasgow",country:"UK",lat:55.87,lng:-4.28,web:"https://subcity.org",desc:"Independent station from the University of Glasgow. Student-run and fiercely non-commercial since 1996."},
+  {name:"Subcity Radio",city:"Glasgow",country:"Scotland",lat:55.87,lng:-4.28,web:"https://subcity.org",desc:"Independent station from the University of Glasgow. Student-run and fiercely non-commercial since 1996."},
   {name:"Dublin Digital Radio",city:"Dublin",country:"Ireland",lat:53.34,lng:-6.27,web:"https://www.dublindigitalradio.com",desc:"Ireland's independent underground station. Arts, music and community from the Irish capital."},
   {name:"FIP",city:"Paris",country:"France",lat:48.87,lng:2.35,web:"https://radiofrance.fr/fip",stream:"https://icecast.radiofrance.fr/fip-midfi.mp3",desc:"France's most eclectic radio. Jazz, soul, world — no genre barriers, no ads. An institution."},
   {name:"Radio Nova",city:"Paris",country:"France",lat:48.85,lng:2.32,web:"https://nova.fr",stream:"https://novazz.ice.infomaniak.ch/novazz-128.mp3",desc:"World beats, funk, soul and creative music. Shaping French culture since 1981."},
@@ -1521,9 +1525,18 @@ function onVolume(v) {
 }
 
 // ── Audio ─────────────────────────────────────────────────────────────────
-function playRandom() {
+function playDiscover() {
   const pool = stations.map((s, i) => i).filter(i => !deadStations.has(stations[i].name));
   if (!pool.length) return;
+  const idx = pool[Math.floor(Math.random() * pool.length)];
+  rotateTo(stations[idx].lng, stations[idx].lat, () => { openPopup(idx); playStation(idx); });
+}
+
+function playRandomLove() {
+  const pm = document.getElementById('pmeta');
+  const pool = stations.map((s, i) => i)
+    .filter(i => favs.has(stations[i].name) && !deadStations.has(stations[i].name));
+  if (!pool.length) { if (pm) pm.textContent = '♥ no favourites yet — tap the heart on a station first'; return; }
   const idx = pool[Math.floor(Math.random() * pool.length)];
   rotateTo(stations[idx].lng, stations[idx].lat, () => { openPopup(idx); playStation(idx); });
 }
@@ -2622,6 +2635,7 @@ function restoreAudioVolume() {
 // Built lazily from the existing station list.
 const STATION_COUNTRY_TO_ISO = {
   "uk":"GB","united kingdom":"GB",
+  "scotland":"GB-SCT",
   "ireland":"IE",
   "france":"FR",
   "belgium":"BE",
@@ -3076,9 +3090,13 @@ async function playRBForCountry(iso, countryName, regionLat, regionLng) {
   document.getElementById('pname').textContent = countryName;
   document.getElementById('pmeta').textContent = `📡 ${iso} — searching radio-browser…`;
   startStatic();
+  // Radio Browser has no country code for UK subdivisions — query by state instead.
+  const rbPath = iso === 'GB-SCT'
+    ? 'bystateexact/Scotland'
+    : `bycountrycodeexact/${iso}`;
   for (const srv of RB) {
     try {
-      const r = await fetch(`${srv}/json/stations/bycountrycodeexact/${iso}?limit=30&hidebroken=true&order=votes&reverse=true`);
+      const r = await fetch(`${srv}/json/stations/${rbPath}?limit=30&hidebroken=true&order=votes&reverse=true`);
       const d = await r.json();
       let candidates = (d || []).filter(x => x.url_resolved || x.url);
       if (!candidates.length) continue;
@@ -3172,8 +3190,10 @@ function runActionZone(action) {
     const v = Math.max(0, Math.min(1, parseFloat(sl.value) + (action === 'volume_up' ? 0.1 : -0.1)));
     sl.value = v; onVolume(v);
     pm.textContent = `🔊 ${Math.round(v * 100)}%`;
-  } else if (action === 'random') {
-    playRandom();
+  } else if (action === 'discover') {
+    playDiscover();
+  } else if (action === 'random_love') {
+    playRandomLove();
   } else if (action === 'stop') {
     if (playing) audio.pause();
     current = null; updatePlayerUI();
@@ -3331,7 +3351,8 @@ function _actionDotClass(action) {
   if (action.startsWith('volume'))   return 'volume';
   if (action.startsWith('preset'))   return 'preset';
   if (action === 'favourite_toggle') return 'favourite';
-  if (action === 'random')           return 'random';
+  if (action === 'random_love')      return 'favourite';
+  if (action === 'discover')         return 'discover';
   return 'stop';
 }
 
@@ -3381,7 +3402,8 @@ const KNOWN_ACTIONS = [
   { id: 'favourite_toggle', label: '♥ Favourite toggle' },
   { id: 'volume_up',        label: '▲ Volume up' },
   { id: 'volume_down',      label: '▼ Volume down' },
-  { id: 'random',           label: '⚄ Random station' },
+  { id: 'discover',         label: '⚄ Discover' },
+  { id: 'random_love',      label: '♥ Random love' },
   { id: 'stop',             label: '■ Stop' },
   { id: 'preset_1',         label: '① Preset 1' },
   { id: 'preset_2',         label: '② Preset 2' },
