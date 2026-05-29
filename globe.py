@@ -129,7 +129,7 @@ def load_actions() -> None:
 
 
 COUNTRY_TO_ISO: dict[str, str] = {
-    "UK": "GB", "United Kingdom": "GB",
+    "UK": "GB", "United Kingdom": "GB", "Scotland": "GB-SCT",
     "Ireland": "IE", "France": "FR", "Belgium": "BE",
     "Netherlands": "NL", "Germany": "DE", "Portugal": "PT", "Spain": "ES",
     "Italy": "IT", "Poland": "PL", "Czechia": "CZ", "Denmark": "DK",
@@ -273,10 +273,14 @@ def pick_curated(stations: dict[str, list[dict]], iso: str) -> dict | None:
 
 
 def get_stream_from_api(iso: str) -> str | None:
+    iso = iso.upper()
+    # Radio Browser has no country code for UK subdivisions — query by state instead.
+    endpoint = ("bystateexact/Scotland" if iso == "GB-SCT"
+                else f"bycountrycodeexact/{iso}")
     for server in API_SERVERS:
         try:
             r = requests.get(
-                f"{server}/json/stations/bycountrycodeexact/{iso.upper()}",
+                f"{server}/json/stations/{endpoint}",
                 params={"hidebroken": "true", "order": "clickcount", "reverse": "true", "limit": 10},
                 timeout=6,
             )
@@ -509,7 +513,7 @@ def dispatch_action(action: str, curated: dict[str, list[dict]]) -> None:
         speak("volume down")
         log.info(f"Volume → {_current_volume}")
 
-    elif action == "random":
+    elif action == "discover":
         # Pick from all curated stations that have a URL
         all_stations: list[dict] = [
             s for pool in curated.values() for s in pool if s.get("url")
@@ -518,9 +522,23 @@ def dispatch_action(action: str, curated: dict[str, list[dict]]) -> None:
             speak("no stations available")
             return
         station = random.choice(all_stations)
-        log.info(f"Random pick: {station['name']}")
+        log.info(f"Discover pick: {station['name']}")
         play(station["url"], station.get("name"))
-        speak(station.get("name") or "random station")
+        speak(station.get("name") or "discover")
+
+    elif action == "random_love":
+        # Pick a random station from favourites that has a URL
+        fav_stations: list[dict] = [
+            s for pool in curated.values() for s in pool
+            if s.get("url") and s.get("favourite")
+        ]
+        if not fav_stations:
+            speak("no favourites yet")
+            return
+        station = random.choice(fav_stations)
+        log.info(f"Random love pick: {station['name']}")
+        play(station["url"], station.get("name"))
+        speak(station.get("name") or "favourite")
 
     elif action.startswith("preset_"):
         try:
