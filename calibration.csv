@@ -1,7 +1,6 @@
 code,country_iso,country_name,region,lat,lng
 a0108f,CF,Central African Republic,,,
 a0145f,CN,China,,,
-a0387f,GB,United Kingdom,,,
 a0401f,TW,Taiwan,,,
 a0441f,GT,Guatemala,,,
 a0465f,SS,South Sudan,,,
@@ -147,7 +146,7 @@ a0915f,TR,Turkey,,,
 a0915f,BO,Bolivia,,,
 a0917f,UA,Ukraine,,,
 a0918f,IT,Italy,,,
-a0932f,GB,United Kingdom,Scotland,56.7861112,-4.1140518
+a0932f,GB-SCT,Scotland,,56.7861112,-4.1140518
 a0936f,RS,Serbia,,,
 a0937f,ME,Montenegro,,,
 a0940f,AR,Argentina,,,
@@ -315,3 +314,12 @@ a1477f,AU,Australia,Sydney,-33.87,151.21
 a1478f,AU,Australia,Melbourne,-37.81,144.96
 a1479f,AU,Australia,Brisbane,-27.47,153.03
 a1480f,AU,Australia,Perth,-31.95,115.86
+a0634f,US,United States,Detroit,42.3315509,-83.0466403
+a0647f,US,United States,Chicago,41.8755616,-87.6244212
+a0642f,US,United States,Miami,25.7741566,-80.1935973
+a1337f,BO,"Bolivia, Plurinational State of",,,
+a1332f,BR,Brazil,Rio de Janeiro,-22.9110137,-43.2093727
+a0737f,CA,Canada,Terre-Neuve,49.1211912,-56.6403402
+a0735f,CA,Canada,Halifax,44.648618,-63.5859487
+a1447f,TH,Thailand,,,
+a0620f,US,United States,Colorado,38.7251776,-105.607716
