@@ -14,6 +14,17 @@ Oreloj is a hacked Oregon Scientific Horizon globe that plays live web radio fro
 - **Live site:** https://n8b2bp67qj-collab.github.io/oreloj/
 - **Pi interface:** http://oreloj.local:5000 — unified website + admin UI
 
+## Editing & deploy model — READ BEFORE CHANGING ANYTHING
+
+Two kinds of file, two different ownership rules. Mixing them up causes data loss.
+
+- **Code & docs** (`index.html`, `globe.py`, `admin.py`, `*.service`, `CLAUDE.md`, `CHANGELOG.md`) — **the repo is the source of truth.** Edit in the repo, deploy repo→Pi + GitHub. Clean one-way push.
+- **Runtime data** (`stations.csv`, `actions.json`, `calibration.csv`, `favourites.json`) — **the Pi is the source of truth.** These are edited *live on the device* via the admin UI at `oreloj.local:5000` (add stations, calibrate zones, set the 6 presets, assign pen codes). The repo's copies are usually STALE.
+  - **Preferred way to change data:** do it in the admin UI, then use its **"Push to GitHub"** to sync (these are the "update stations via website" commits).
+  - **If you must change data programmatically:** NEVER `scp` the repo copy onto the Pi — it silently wipes on-device stations/zones/presets/codes. **Reconcile instead:** pull the Pi's copy, apply only your specific change, verify on-device data survives, push the result to both Pi and GitHub. See the `oreloj-deploy` skill.
+- **Deploy/restart:** both `globe.service` and `admin.service` are user systemd units (`systemctl --user restart <unit>`). Never `pkill` admin — it kills the managed service and (with `Restart=on-failure`) systemd won't bring it back.
+- **Avoid drift at the root:** `index.html` also hardcodes a `BUILT_IN` station array that duplicates `stations.csv` — a known smell that spawns phantom stations. If touching station data heavily, prefer consolidating to one canonical source.
+
 ## Key files
 
 | File | What it does |
