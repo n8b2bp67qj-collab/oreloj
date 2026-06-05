@@ -356,13 +356,20 @@ def _write_state() -> None:
 # speakers/mixers expecting line in. Boost it with +24 dB of software gain, but
 # *only* when the active sink is the jack: Bluetooth speakers are already loud,
 # and on Mac dev `pactl` is missing and we fall through to no gain.
+#
+# The brickwall limiter (alimiter) after the boost is what prevents clipping:
+# without it, +24 dB pushes already-mastered streams above 0 dBFS and they
+# square-wave into harsh digital distortion. The limiter catches peaks just
+# below 0 dBFS so loud passages stay clean while quiet ones still get the lift.
 def _gain_args() -> list[str]:
     try:
         out = subprocess.run(["pactl", "get-default-sink"],
                              capture_output=True, text=True, timeout=2).stdout
     except Exception:
         return []
-    return [] if "bluez" in out.lower() else ["--af=lavfi=[volume=24dB]"]
+    if "bluez" in out.lower():
+        return []
+    return ["--af=lavfi=[volume=24dB,alimiter=limit=0.95]"]
 
 
 # ── Volume control via mpv IPC ────────────────────────────────────────────────
