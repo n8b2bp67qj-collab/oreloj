@@ -319,7 +319,7 @@ def play(url: str, name: str | None = None) -> None:
     global _mpv, _current_station
     if _mpv and _mpv.poll() is None:
         _mpv.terminate(); _mpv.wait()
-    _mpv = subprocess.Popen(MPV_CMD + _gain_args() + [url], stdin=subprocess.DEVNULL)
+    _mpv = subprocess.Popen(MPV_CMD + [url], stdin=subprocess.DEVNULL)
     _current_station = name
     _write_state()
 
@@ -349,27 +349,6 @@ def _write_state() -> None:
         tmp.replace(STATE_PATH)
     except Exception as e:
         log.debug(f"Could not write state.json: {e}")
-
-
-# ── Jack line-level boost ─────────────────────────────────────────────────────
-# The Pi's 3.5 mm jack output sits well below line level — too quiet for powered
-# speakers/mixers expecting line in. Boost it with +24 dB of software gain, but
-# *only* when the active sink is the jack: Bluetooth speakers are already loud,
-# and on Mac dev `pactl` is missing and we fall through to no gain.
-#
-# The brickwall limiter (alimiter) after the boost is what prevents clipping:
-# without it, +24 dB pushes already-mastered streams above 0 dBFS and they
-# square-wave into harsh digital distortion. The limiter catches peaks just
-# below 0 dBFS so loud passages stay clean while quiet ones still get the lift.
-def _gain_args() -> list[str]:
-    try:
-        out = subprocess.run(["pactl", "get-default-sink"],
-                             capture_output=True, text=True, timeout=2).stdout
-    except Exception:
-        return []
-    if "bluez" in out.lower():
-        return []
-    return ["--af=lavfi=[volume=24dB,alimiter=limit=0.95]"]
 
 
 # ── Volume control via mpv IPC ────────────────────────────────────────────────
@@ -439,7 +418,7 @@ def _play_wav(path) -> None:
     if not path.exists():
         return
     try:
-        subprocess.run(["mpv", "--no-video", "--really-quiet", *_gain_args(), str(path)],
+        subprocess.run(["mpv", "--no-video", "--really-quiet", str(path)],
                        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                        stderr=subprocess.DEVNULL, timeout=3)
     except Exception:
