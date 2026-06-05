@@ -645,6 +645,10 @@ audio { display: none; }
           <!-- Bluetooth -->
           <div class="sys-sub-hdr">bluetooth</div>
           <div class="sys-inner">
+            <div class="sys-scan-row" style="justify-content:space-between;">
+              <span id="sys-bt-power-state" style="font-size:10px;color:var(--muted);">power: —</span>
+              <button style="font-size:10px;padding:4px 9px;" id="sys-bt-power-btn" onclick="sysBtTogglePower()">—</button>
+            </div>
             <div class="sys-conn-info" id="sys-bt-info">—</div>
             <div class="sys-scan-row">
               <button style="font-size:10px;padding:4px 9px;" id="sys-bt-scan-btn" onclick="sysBtScan()">Scan</button>
@@ -3950,6 +3954,42 @@ async function sysOnOpen() {
     s.hotspot_mode ? 'hotspot active' : (s.wifi ? '● ' + s.wifi : '— not connected');
   const btNames = (s.bt || []).map(d => d.name).join(', ');
   document.getElementById('sys-bt-info').textContent = btNames ? '● ' + btNames : '— none connected';
+  sysBtLoadPower();
+}
+
+// Bluetooth power toggle
+let _btPowered = null;
+function _setBtPowerUi(powered) {
+  _btPowered = powered;
+  const btn = document.getElementById('sys-bt-power-btn');
+  const lbl = document.getElementById('sys-bt-power-state');
+  const scanBtn = document.getElementById('sys-bt-scan-btn');
+  if (powered === null) { btn.textContent = '—'; lbl.textContent = 'power: —'; return; }
+  btn.textContent = powered ? 'Turn off' : 'Turn on';
+  lbl.textContent = powered ? 'power: on' : 'power: off';
+  scanBtn.disabled = !powered;
+  if (!powered) {
+    document.getElementById('sys-bt-info').textContent = '— bluetooth off';
+    document.getElementById('sys-bt-list').innerHTML = '';
+    document.getElementById('sys-bt-status').textContent = '';
+  }
+}
+async function sysBtLoadPower() {
+  const r = await _sysApi('GET', '/api/bt/power');
+  _setBtPowerUi(r ? r.powered : null);
+}
+async function sysBtTogglePower() {
+  const btn = document.getElementById('sys-bt-power-btn');
+  const target = !_btPowered, prev = btn.textContent;
+  btn.disabled = true; btn.textContent = '…';
+  const r = await _sysApi('POST', '/api/bt/power', {on: target});
+  btn.disabled = false;
+  if (r && r.ok) {
+    _setBtPowerUi(target);
+    if (target) sysOnOpen();   // refresh connected-device info once back on
+  } else {
+    btn.textContent = prev;
+  }
 }
 
 // Volume
