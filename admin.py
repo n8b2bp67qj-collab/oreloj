@@ -569,6 +569,7 @@ def api_bt_scan():
     return jsonify([
         {"mac": mac, "name": name, "paired": mac in paired}
         for mac, name in discovered.items()
+        if not mac_only_re.match(name)  # skip devices with no resolved friendly name
     ])
 
 
