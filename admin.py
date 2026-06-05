@@ -628,7 +628,20 @@ def api_bt_power_set():
     if on:
         _run(["rfkill", "unblock", "bluetooth"])  # best effort — clear any soft block first
     rc, out = _run(["bluetoothctl", "power", "on" if on else "off"], timeout=10)
-    return jsonify({"ok": rc == 0, "powered": on if rc == 0 else None, "msg": out})
+
+    reconnected = []
+    if on and rc == 0:
+        # Powering the adapter on does NOT restore connections — reconnect the
+        # known speaker(s) ourselves so audio is ready without a manual tap.
+        time.sleep(1.5)  # let the adapter settle before connect attempts
+        _, paired_out = _run(["bluetoothctl", "devices", "Paired"])
+        for d in _parse_bt_lines(paired_out):
+            crc, _ = _run(["bluetoothctl", "connect", d["mac"]], timeout=12)
+            if crc == 0:
+                reconnected.append(d["name"])
+
+    return jsonify({"ok": rc == 0, "powered": on if rc == 0 else None,
+                    "reconnected": reconnected, "msg": out})
 
 
 # ── API: Wi-Fi ────────────────────────────────────────────────────────────────
