@@ -24,7 +24,6 @@ def _build_time() -> str:
 STATIONS_CSV     = SCRIPT_DIR / "stations.csv"
 FAVS_PATH        = SCRIPT_DIR / "favourites.json"
 ACTIONS_FILE     = SCRIPT_DIR / "actions.json"
-STATE_FILE       = SCRIPT_DIR / "state.json"
 CALIBRATION_CSV  = SCRIPT_DIR / "calibration.csv"
 CAL_FIELDS       = ["code", "country_iso", "country_name", "region", "lat", "lng"]
 CSV_FIELDS   = ["Continent", "Country", "City", "Radio Station",
@@ -171,22 +170,6 @@ def api_status():
 
     return jsonify({"playing": playing, "bt": bt, "wifi": wifi,
                     "hotspot_mode": hotspot_mode, "build_time": _build_time()})
-
-
-@app.get("/api/now")
-def api_now():
-    """Lightweight live-state mirror for the admin UI to poll (~2 s).
-    Reads state.json written by globe.py on every tap — pure file read, no
-    subprocess calls, so it's cheap enough to hit frequently."""
-    state = {"playing": False, "station": None, "volume": None,
-             "last_code": None, "last_action": None, "updated_at": None}
-    if STATE_FILE.exists():
-        try:
-            state.update(json.loads(STATE_FILE.read_text(encoding="utf-8")))
-        except Exception:
-            pass
-    state["favourites"] = read_favs()
-    return jsonify(state)
 
 
 # ── API: stations ─────────────────────────────────────────────────────────────
@@ -534,8 +517,10 @@ def api_bt_devices():
 
 @app.post("/api/bt/scan")
 def api_bt_scan():
-    """6-second BT scan; returns all discovered devices."""
-    mac_re = re.compile(r'([0-9A-F]{2}(?::[0-9A-F]{2}){5})\s+(.+)', re.IGNORECASE)
+    """10-second BT scan; returns all discovered devices with resolved names."""
+    mac_re      = re.compile(r'([0-9A-F]{2}(?::[0-9A-F]{2}){5})', re.IGNORECASE)
+    mac_only_re = re.compile(r'^([0-9A-F]{2}:){5}[0-9A-F]{2}$',   re.IGNORECASE)
+    chg_name_re = re.compile(r'(?:Name|Alias):\s+(.+)$',           re.IGNORECASE)
     discovered = {}  # mac -> name
 
     proc = subprocess.Popen(
@@ -546,17 +531,30 @@ def api_bt_scan():
     proc.stdin.write("scan on\n")
     proc.stdin.flush()
 
-    deadline = time.time() + 6
+    deadline = time.time() + 10
     while time.time() < deadline:
         ready, _, _ = select.select([proc.stdout], [], [], 0.3)
         if ready:
             line = proc.stdout.readline()
             if not line:
                 break
-            if "Device" in line:
-                m = mac_re.search(line)
-                if m:
-                    discovered[m.group(1).upper()] = m.group(2).strip()
+            if "Device" not in line:
+                continue
+            mac_m = mac_re.search(line)
+            if not mac_m:
+                continue
+            mac = mac_m.group(1).upper()
+
+            # [CHG] Device MAC Name: FriendlyName  — resolved name event
+            name_m = chg_name_re.search(line)
+            if name_m:
+                discovered[mac] = name_m.group(1).strip()
+            else:
+                # [NEW] Device MAC SomeName — initial appearance
+                after = line[line.index(mac_m.group(1)) + 17:].strip()
+                # Only store if we don't have a proper name yet and it's not just the MAC
+                if mac not in discovered or mac_only_re.match(discovered[mac]):
+                    discovered[mac] = after if (after and not mac_only_re.match(after)) else mac
 
     try:
         proc.stdin.write("scan off\nquit\n")
