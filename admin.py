@@ -520,7 +520,8 @@ def api_bt_scan():
     """10-second BT scan; returns only devices with a resolved friendly name."""
     # Matches: [NEW|CHG|DEL] Device AA:BB:CC:DD:EE:FF <rest>
     event_re    = re.compile(r'\[(NEW|CHG|DEL)\]\s+Device\s+([0-9A-F]{2}(?::[0-9A-F]{2}){5})\s*(.*)', re.IGNORECASE)
-    mac_only_re = re.compile(r'^([0-9A-F]{2}:){5}[0-9A-F]{2}$', re.IGNORECASE)
+    # nameless devices get a default alias = their MAC with ':' OR '-' separators
+    mac_only_re = re.compile(r'^([0-9A-F]{2}[:-]){5}[0-9A-F]{2}$', re.IGNORECASE)
     # CHG property keys that carry no friendly name — ignore these lines entirely
     _NON_NAME = ("RSSI:", "UUIDs:", "Class:", "Icon:", "Paired:", "Trusted:",
                  "Blocked:", "Connected:", "LegacyPairing:", "ManufacturerData:",
