@@ -568,8 +568,17 @@ def api_bt_scan():
     except Exception:
         proc.kill()
 
+    # bluetoothctl only emits a Name in scan events the FIRST time it sees a
+    # device this session; already-cached devices yield only RSSI [CHG] noise.
+    # So merge the persistent device list — it carries resolved names — and let
+    # it win over anything we picked up live (which may be a bare MAC alias).
+    _, known_out = _run(["bluetoothctl", "devices"])
+    for d in _parse_bt_lines(known_out):
+        if not mac_only_re.match(d["name"]):
+            discovered[d["mac"].upper()] = d["name"]
+
     _, paired_out = _run(["bluetoothctl", "devices", "Paired"])
-    paired = {d["mac"] for d in _parse_bt_lines(paired_out)}
+    paired = {d["mac"].upper() for d in _parse_bt_lines(paired_out)}
 
     return jsonify([
         {"mac": mac, "name": name, "paired": mac in paired}
