@@ -517,10 +517,14 @@ def api_bt_devices():
 
 @app.post("/api/bt/scan")
 def api_bt_scan():
-    """10-second BT scan; returns all discovered devices with resolved names."""
-    mac_re      = re.compile(r'([0-9A-F]{2}(?::[0-9A-F]{2}){5})', re.IGNORECASE)
-    mac_only_re = re.compile(r'^([0-9A-F]{2}:){5}[0-9A-F]{2}$',   re.IGNORECASE)
-    chg_name_re = re.compile(r'(?:Name|Alias):\s+(.+)$',           re.IGNORECASE)
+    """10-second BT scan; returns only devices with a resolved friendly name."""
+    # Matches: [NEW|CHG|DEL] Device AA:BB:CC:DD:EE:FF <rest>
+    event_re    = re.compile(r'\[(NEW|CHG|DEL)\]\s+Device\s+([0-9A-F]{2}(?::[0-9A-F]{2}){5})\s*(.*)', re.IGNORECASE)
+    mac_only_re = re.compile(r'^([0-9A-F]{2}:){5}[0-9A-F]{2}$', re.IGNORECASE)
+    # CHG property keys that carry no friendly name — ignore these lines entirely
+    _NON_NAME = ("RSSI:", "UUIDs:", "Class:", "Icon:", "Paired:", "Trusted:",
+                 "Blocked:", "Connected:", "LegacyPairing:", "ManufacturerData:",
+                 "ServiceData:", "AdvertisingFlags:", "TxPower:", "AddressType:")
     discovered = {}  # mac -> name
 
     proc = subprocess.Popen(
@@ -538,23 +542,23 @@ def api_bt_scan():
             line = proc.stdout.readline()
             if not line:
                 break
-            if "Device" not in line:
+            m = event_re.search(line)
+            if not m:
                 continue
-            mac_m = mac_re.search(line)
-            if not mac_m:
-                continue
-            mac = mac_m.group(1).upper()
+            event, mac, rest = m.group(1).upper(), m.group(2).upper(), m.group(3).strip()
 
-            # [CHG] Device MAC Name: FriendlyName  — resolved name event
-            name_m = chg_name_re.search(line)
-            if name_m:
-                discovered[mac] = name_m.group(1).strip()
-            else:
-                # [NEW] Device MAC SomeName — initial appearance
-                after = line[line.index(mac_m.group(1)) + 17:].strip()
-                # Only store if we don't have a proper name yet and it's not just the MAC
+            if rest.startswith("Name: "):
+                # Resolved friendly name — best source, always overwrite
+                discovered[mac] = rest[6:].strip()
+            elif rest.startswith("Alias: "):
+                # Alias — use only if no real Name yet
                 if mac not in discovered or mac_only_re.match(discovered[mac]):
-                    discovered[mac] = after if (after and not mac_only_re.match(after)) else mac
+                    discovered[mac] = rest[7:].strip()
+            elif event == "NEW" and rest and not any(rest.startswith(k) for k in _NON_NAME):
+                # [NEW] Device MAC FriendlyName — initial appearance
+                if mac not in discovered:
+                    discovered[mac] = rest if not mac_only_re.match(rest) else mac
+            # All other CHG lines (RSSI, UUIDs, Class, etc.) are intentionally ignored
 
     try:
         proc.stdin.write("scan off\nquit\n")
@@ -569,7 +573,7 @@ def api_bt_scan():
     return jsonify([
         {"mac": mac, "name": name, "paired": mac in paired}
         for mac, name in discovered.items()
-        if not mac_only_re.match(name)  # skip devices with no resolved friendly name
+        if not mac_only_re.match(name)  # hide devices whose name never resolved
     ])
 
 
