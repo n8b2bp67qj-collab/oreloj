@@ -616,6 +616,21 @@ def api_bt_pair():
     return jsonify({"ok": rc == 0, "msg": out})
 
 
+@app.get("/api/bt/power")
+def api_bt_power_get():
+    _, out = _run(["bluetoothctl", "show"])
+    return jsonify({"powered": bool(re.search(r"Powered:\s*yes", out, re.IGNORECASE))})
+
+
+@app.post("/api/bt/power")
+def api_bt_power_set():
+    on = bool((request.json or {}).get("on"))
+    if on:
+        _run(["rfkill", "unblock", "bluetooth"])  # best effort — clear any soft block first
+    rc, out = _run(["bluetoothctl", "power", "on" if on else "off"], timeout=10)
+    return jsonify({"ok": rc == 0, "powered": on if rc == 0 else None, "msg": out})
+
+
 # ── API: Wi-Fi ────────────────────────────────────────────────────────────────
 
 @app.get("/api/wifi/networks")
