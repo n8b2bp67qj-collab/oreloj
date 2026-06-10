@@ -38,6 +38,8 @@ CHIME_LIKE   = SOUNDS_DIR / "like.wav"
 CHIME_UNLIKE = SOUNDS_DIR / "unlike.wav"
 CHIME_VOL_UP   = SOUNDS_DIR / "vol_up.wav"
 CHIME_VOL_DOWN = SOUNDS_DIR / "vol_down.wav"
+TUNING_WAV     = SOUNDS_DIR / "tuning.wav"   # FM-static played while a stream loads
+STREAM_START_TIMEOUT = 12.0  # noise safety stop; also the window to call a stream dead
 API_SERVERS  = [
     "https://de1.api.radio-browser.info",
     "https://nl1.api.radio-browser.info",
@@ -265,13 +267,19 @@ def load_stations(path: Path) -> dict[str, list[dict]]:
     return stations
 
 
-def pick_curated(stations: dict[str, list[dict]], iso: str) -> dict | None:
+def pick_curated(stations: dict[str, list[dict]], iso: str,
+                 exclude: str | None = None) -> dict | None:
+    """Pick a station for the country, preferring favourites. With `exclude`
+    (the currently playing station), prefer a different one so a re-tap
+    cycles through the country's stations."""
     pool          = stations.get(iso, [])
     favs_with_url = [s for s in pool if s["favourite"] and s["url"]]
     any_with_url  = [s for s in pool if s["url"]]
-    if favs_with_url: return random.choice(favs_with_url)
-    if any_with_url:  return random.choice(any_with_url)
-    return None
+    cands = favs_with_url or any_with_url
+    if not cands:
+        return None
+    others = [s for s in cands if s["name"] != exclude]
+    return random.choice(others or cands)
 
 
 def get_stream_from_api(iso: str) -> str | None:
@@ -299,10 +307,11 @@ def get_stream_from_api(iso: str) -> str | None:
     return None
 
 
-def resolve_stream(iso_list: list[str], curated: dict[str, list[dict]]) -> tuple[str | None, str | None]:
+def resolve_stream(iso_list: list[str], curated: dict[str, list[dict]],
+                   exclude: str | None = None) -> tuple[str | None, str | None]:
     """Returns (url, station_name)."""
     for iso in iso_list:
-        s = pick_curated(curated, iso)
+        s = pick_curated(curated, iso, exclude=exclude)
         if s:
             log.info(f"  ♪  {s['name']}  {'★ ' if s['favourite'] else ''}[curated]")
             return s["url"], s["name"]
@@ -311,9 +320,79 @@ def resolve_stream(iso_list: list[str], curated: dict[str, list[dict]]) -> tuple
 
 
 _mpv: subprocess.Popen | None = None
+_noise: subprocess.Popen | None = None  # looping FM-static while a stream loads
 _current_station: str | None = None  # name of currently playing station
 _last_code:   str | None = None      # last pen code handled (mirrored to UI)
 _last_action: str | None = None      # last action run, or None for a country tap
+
+
+def _start_noise() -> None:
+    """Start the looping tuning static (idempotent, best-effort)."""
+    global _noise
+    if (_noise and _noise.poll() is None) or not TUNING_WAV.exists():
+        return
+    try:
+        _noise = subprocess.Popen(
+            ["mpv", "--no-video", "--really-quiet", "--loop=inf", str(TUNING_WAV)],
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        _noise = None
+
+
+def _stop_noise() -> None:
+    global _noise
+    if _noise and _noise.poll() is None:
+        _noise.terminate()
+        try:
+            _noise.wait(timeout=1)
+        except Exception:
+            pass
+    _noise = None
+
+
+def _mpv_get(prop: str):
+    """Read one property over the mpv IPC socket; None if unavailable."""
+    try:
+        import socket as _socket, json as _json
+        with _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM) as s:
+            s.settimeout(0.3)
+            s.connect(MPV_SOCKET)
+            s.sendall((_json.dumps({"command": ["get_property", prop]}) + "\n").encode())
+            for line in s.recv(4096).decode().splitlines():
+                msg = _json.loads(line)
+                if "data" in msg:
+                    return msg["data"]
+    except Exception:
+        pass
+    return None
+
+
+def _watch_stream_start(proc: subprocess.Popen) -> None:
+    """Hold the tuning noise until audio actually flows, then cut it.
+    If the player dies — or never produces audio by the deadline (webpage
+    URL, dead host, 404) — announce it: a silent failure reads as 'the
+    globe is broken' to the user."""
+    global _current_station
+    deadline = time.monotonic() + STREAM_START_TIMEOUT
+    while time.monotonic() < deadline:
+        if _mpv is not proc:                    # a newer tap took over
+            return
+        if proc.poll() is None and (_mpv_get("time-pos") or 0) > 0:
+            _stop_noise()                       # audio is flowing
+            return
+        if proc.poll() is not None:
+            break                               # player died before producing audio
+        time.sleep(0.3)
+    if _mpv is not proc:
+        return
+    # Dead, or still silent at the deadline — either way this station failed.
+    if proc.poll() is None:
+        proc.terminate()
+    _stop_noise()
+    _current_station = None
+    _write_state()
+    speak("This station seems to be off air")
+
 
 def play(url: str, name: str | None = None) -> None:
     global _mpv, _current_station
@@ -322,9 +401,11 @@ def play(url: str, name: str | None = None) -> None:
     _mpv = subprocess.Popen(MPV_CMD + [url], stdin=subprocess.DEVNULL)
     _current_station = name
     _write_state()
+    threading.Thread(target=_watch_stream_start, args=(_mpv,), daemon=True).start()
 
 def stop() -> None:
     global _mpv, _current_station
+    _stop_noise()
     if _mpv and _mpv.poll() is None:
         _mpv.terminate(); _mpv.wait()
     _mpv = None
@@ -397,6 +478,19 @@ def _write_tone_wav(path, notes, note_dur=0.13, rate=22050, vol=0.5) -> None:
         w.writeframes(bytes(frames))
 
 
+def _write_noise_wav(path, dur=1.5, rate=22050, vol=0.18) -> None:
+    """Synthesize a loopable FM-static WAV: lowpassed white noise reads as
+    'between stations' hiss rather than harsh digital noise (stdlib only)."""
+    frames = bytearray()
+    prev = 0.0
+    for _ in range(int(rate * dur)):
+        prev = 0.6 * prev + 0.4 * random.uniform(-1.0, 1.0)
+        frames += struct.pack("<h", int(max(-1.0, min(1.0, vol * prev)) * 32767))
+    with wave.open(str(path), "w") as w:
+        w.setnchannels(1); w.setsampwidth(2); w.setframerate(rate)
+        w.writeframes(bytes(frames))
+
+
 def _ensure_chimes() -> None:
     """Generate the like/unlike chimes once if they don't exist yet."""
     try:
@@ -409,6 +503,8 @@ def _ensure_chimes() -> None:
             _write_tone_wav(CHIME_VOL_UP, [988, 1319], note_dur=0.07)    # short ascending blip
         if not CHIME_VOL_DOWN.exists():
             _write_tone_wav(CHIME_VOL_DOWN, [1319, 988], note_dur=0.07)  # short descending blip
+        if not TUNING_WAV.exists():
+            _write_noise_wav(TUNING_WAV)
     except Exception as e:
         log.warning(f"Could not generate chimes: {e}")
 
@@ -677,6 +773,7 @@ def main() -> None:
 
     last_code:    str | None = None
     last_trigger: float      = 0.0
+    prev_country_code: str | None = None   # last *country* tap, for re-tap detection
 
     while True:
         try:
@@ -712,13 +809,27 @@ def main() -> None:
         label    = _entries_to_label(entries)
 
         log.info(f"Tap → {label}  ({code})")
-        speak(_entries_to_tts(entries))
+        # Re-tap of the country already playing: skip the name announcement
+        # and cycle to another of its stations instead of restarting.
+        retap = (code == prev_country_code
+                 and _mpv is not None and _mpv.poll() is None)
+        prev_country_code = code
 
-        url, name = resolve_stream(iso_list, curated)
+        _start_noise()   # instant FM-static feedback; cut by the stream watchdog
+        if not retap:
+            speak(_entries_to_tts(entries))
+
+        url, name = resolve_stream(iso_list, curated,
+                                   exclude=_current_station if retap else None)
         if url:
-            play(url, name)
+            if retap and name and name == _current_station:
+                _stop_noise()   # only one station here — leave it playing
+            else:
+                play(url, name)
         else:
+            _stop_noise()
             log.warning(f"No stream for {label}")
+            speak("No station found")
             _write_state()
 
 
