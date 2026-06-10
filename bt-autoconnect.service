@@ -1,0 +1,7 @@
+[Unit]
+Description=Oreloj — reconnect paired Bluetooth speakers that are in range
+
+[Service]
+Type=oneshot
+# Out-of-range speakers fail to connect — that is expected, never a unit failure.
+ExecStart=/bin/bash -c 'bluetoothctl devices Paired | while read -r _ mac _; do bluetoothctl info "$mac" | grep -q "Connected: yes" || timeout 12 bluetoothctl connect "$mac" || true; done; exit 0'
