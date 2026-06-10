@@ -322,6 +322,7 @@ def resolve_stream(iso_list: list[str], curated: dict[str, list[dict]],
 _mpv: subprocess.Popen | None = None
 _noise: subprocess.Popen | None = None  # looping FM-static while a stream loads
 _current_station: str | None = None  # name of currently playing station
+_current_url: str | None = None      # URL of currently playing stream
 _last_code:   str | None = None      # last pen code handled (mirrored to UI)
 _last_action: str | None = None      # last action run, or None for a country tap
 
@@ -380,7 +381,7 @@ def _watch_stream_start(proc: subprocess.Popen) -> None:
     If the player dies — or never produces audio by the deadline (webpage
     URL, dead host, 404) — announce it: a silent failure reads as 'the
     globe is broken' to the user."""
-    global _current_station
+    global _current_station, _current_url
     deadline = time.monotonic() + STREAM_START_TIMEOUT
     while time.monotonic() < deadline:
         if _mpv is not proc:                    # a newer tap took over
@@ -398,26 +399,30 @@ def _watch_stream_start(proc: subprocess.Popen) -> None:
         proc.terminate()
     _stop_noise()
     _current_station = None
+    _current_url = None
     _write_state()
     speak("This station seems to be off air")
 
 
 def play(url: str, name: str | None = None) -> None:
-    global _mpv, _current_station
+    global _mpv, _current_station, _current_url
+    _start_noise()   # idempotent — every play path gets the tuning static
     if _mpv and _mpv.poll() is None:
         _mpv.terminate(); _mpv.wait()
     _mpv = subprocess.Popen(MPV_CMD + [url], stdin=subprocess.DEVNULL)
     _current_station = name
+    _current_url = url
     _write_state()
     threading.Thread(target=_watch_stream_start, args=(_mpv,), daemon=True).start()
 
 def stop() -> None:
-    global _mpv, _current_station
+    global _mpv, _current_station, _current_url
     _stop_noise()
     if _mpv and _mpv.poll() is None:
         _mpv.terminate(); _mpv.wait()
     _mpv = None
     _current_station = None
+    _current_url = None
     _write_state()
 
 
@@ -669,6 +674,11 @@ def dispatch_action(action: str, curated: dict[str, list[dict]]) -> None:
             log.info(f"Preset {slot}: not configured")
             return
         label = preset.get("label") or f"Preset {slot}"
+        if (preset["url"] == _current_url
+                and _mpv is not None and _mpv.poll() is None):
+            # Impatient re-taps while the stream buffers must not restart it.
+            log.info(f"Preset {slot}: already playing — ignored")
+            return
         log.info(f"Preset {slot}: {preset['name']} — {preset['url']}")
         play(preset["url"], preset.get("name") or label)
         speak(label)
