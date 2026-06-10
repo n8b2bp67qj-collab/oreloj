@@ -1,0 +1,10 @@
+[Unit]
+Description=Oreloj — periodic Bluetooth speaker reconnect
+
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=2min
+RandomizedDelaySec=10
+
+[Install]
+WantedBy=timers.target
