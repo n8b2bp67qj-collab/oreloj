@@ -86,6 +86,75 @@ def _parse_bt_lines(text: str) -> list:
     return devices
 
 
+def _bt_is_paired(mac: str) -> bool:
+    """Ground truth for pairing — 'bluetoothctl pair' can claim success while
+    the speaker silently drops the bond, so always re-check with 'info'."""
+    _, info = _run(["bluetoothctl", "info", mac])
+    return bool(re.search(r"Paired:\s*yes", info, re.IGNORECASE))
+
+
+# ── PipeWire combine sink (3.5mm + all paired BT speakers) ───────────────────
+
+_COMBINE_CONF = Path.home() / ".config/pipewire/pipewire.conf.d/combine-sink.conf"
+_FALLBACK_ALSA_SINK = "alsa_output.platform-3f00b840.mailbox.stereo-fallback"
+
+_COMBINE_NODE_TMPL = """              {
+                  audio.position = [ FL FR ]
+                  combine.audio.position = [ FL FR ]
+                  target.object = "%s"
+              }"""
+
+_COMBINE_CONF_TMPL = """context.modules = [
+  {   name = libpipewire-module-combine-stream
+      args = {
+          combine.props = {
+              node.name = "combine_sink"
+              node.description = "Combined (3.5mm + BT)"
+              media.class = "Audio/Sink"
+          }
+          nodes = [
+%s
+          ]
+      }
+  }
+]
+"""
+
+
+def _rebuild_combine_sink() -> bool:
+    """Regenerate the combine-sink config from the current ALSA sink(s) plus
+    every paired Bluetooth speaker, restarting the audio stack only when the
+    config actually changed. Returns True if the stack was reconfigured.
+    A missing target is tolerated by the combine module, so it is safe to list
+    speakers that are not currently connected."""
+    rc, out = _run(["pactl", "list", "short", "sinks"])
+    alsa = [f.split("\t")[1] for f in out.splitlines()
+            if rc == 0 and "\t" in f and f.split("\t")[1].startswith("alsa_output")]
+    if not alsa:
+        alsa = [_FALLBACK_ALSA_SINK]
+    _, paired_out = _run(["bluetoothctl", "devices", "Paired"])
+    bt = [f"bluez_output.{d['mac'].replace(':', '_')}.1"
+          for d in _parse_bt_lines(paired_out)]
+    nodes = "\n".join(_COMBINE_NODE_TMPL % t for t in alsa + bt)
+    text = _COMBINE_CONF_TMPL % nodes
+    try:
+        if _COMBINE_CONF.exists() and _COMBINE_CONF.read_text(encoding="utf-8") == text:
+            return False
+        _COMBINE_CONF.parent.mkdir(parents=True, exist_ok=True)
+        tmp = Path(str(_COMBINE_CONF) + ".tmp")
+        tmp.write_text(text, encoding="utf-8")
+        os.replace(tmp, _COMBINE_CONF)
+    except Exception:
+        return False
+    env = {**os.environ, "XDG_RUNTIME_DIR": f"/run/user/{os.getuid()}"}
+    subprocess.run(
+        ["systemctl", "--user", "restart", "pipewire", "pipewire-pulse", "wireplumber"],
+        env=env, timeout=15, capture_output=True,
+    )
+    time.sleep(2)  # let the stack settle before anything touches audio again
+    return True
+
+
 # ── Favourites JSON ───────────────────────────────────────────────────────────
 
 def read_favs() -> list:
@@ -593,7 +662,14 @@ def api_bt_connect():
     if not mac:
         abort(400)
     rc, out = _run(["bluetoothctl", "connect", mac], timeout=15)
-    return jsonify({"ok": rc == 0, "msg": out})
+    reconfigured = False
+    if rc == 0 and _bt_is_paired(mac):
+        # Covers speakers paired outside the UI (e.g. over SSH) that are
+        # missing from the combine sink.
+        reconfigured = _rebuild_combine_sink()
+        if reconfigured:  # the audio restart drops the link — bring it back
+            rc, out = _run(["bluetoothctl", "connect", mac], timeout=15)
+    return jsonify({"ok": rc == 0, "audio_reconfigured": reconfigured, "msg": out})
 
 
 @app.post("/api/bt/disconnect")
@@ -611,9 +687,15 @@ def api_bt_pair():
     if not mac:
         abort(400)
     rc, out = _run(["bluetoothctl", "pair", mac], timeout=20)
-    if rc == 0:
-        _run(["bluetoothctl", "trust", mac])
-    return jsonify({"ok": rc == 0, "msg": out})
+    time.sleep(1)  # let bluez settle before reading the bond state back
+    if not _bt_is_paired(mac):
+        return jsonify({"ok": False, "paired": False,
+                        "msg": out or "pairing failed — is the speaker in pairing mode?"})
+    _run(["bluetoothctl", "trust", mac])
+    reconfigured = _rebuild_combine_sink()
+    crc, _ = _run(["bluetoothctl", "connect", mac], timeout=15)
+    return jsonify({"ok": True, "paired": True, "connected": crc == 0,
+                    "audio_reconfigured": reconfigured, "msg": out})
 
 
 @app.get("/api/bt/power")
