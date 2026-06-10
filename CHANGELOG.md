@@ -5,6 +5,27 @@ Format: [date] — what changed and why.
 
 ---
 
+## 2026-06-10
+
+### Added
+- **FM tuning static** (`globe.py`) — a soft, synthesized radio-static loop (`sounds/tuning.wav`, generated on first run) starts the instant a country is tapped and is cut by a watchdog the moment the stream actually produces audio. Covers the announce/connect gap like the website's white-noise effect.
+- **Off-air announcement** (`globe.py`) — if the player dies or produces no audio within 12 s (webpage URL, 404, dead host), the globe says "This station seems to be off air" instead of failing silently, kills the stuck player and clears state.
+- **Station health-check** (`check_stations.py`) — probes every `stations.csv` stream URL concurrently and flags webpages, HTTP errors, timeouts and non-audio responses. Exit code 1 when something is broken (cron-friendly). First run: 110/131 healthy.
+- **Bluetooth auto-reconnect** (`bt-autoconnect.service` + `.timer`) — user systemd timer (every 2 min, 30 s after boot) connects any paired-but-disconnected speaker. The Pi no longer waits for the speaker to initiate.
+
+### Changed
+- **Re-tap behaviour** (`globe.py`) — tapping the country already playing no longer re-announces its name or restarts the stream: it cycles to another of that country's stations (favourites first); with a single station it just keeps playing.
+- **BT pairing is verified** (`admin.py`) — `/api/bt/pair` re-checks `Paired: yes` via `bluetoothctl info` (pair output alone can lie — Bose drops bonds silently when its device list is full), reports honestly, and auto-rebuilds the PipeWire combine sink with all paired speakers so newly paired speakers receive audio without manual config. `/api/bt/connect` does the same for speakers paired outside the UI.
+
+### Fixed
+- **Radio Alhara stream URL** (`stations.csv`) — `radioalhara.net/stream` is a webpage; replaced with the real RadioJar stream.
+
+### Device-side (documented for reference, not in repo)
+- Wi-Fi: cloud-init's instance-id is pinned in `cmdline.txt` (`ds=nocloud;i=…`) — bump it there, not in `meta-data`, to re-apply `network-config`. The "Freebox Bestron " SSID ends with a real trailing space.
+- Bluetooth audio on headless: `~/.config/wireplumber/wireplumber.conf.d/80-bluez-headless.conf` disables seat-monitoring; lightdm disabled (its greeter session's pipewire stole BT endpoints); rogue *system-level* `admin.service` disabled (it squatted port 5000 and made the user unit crash-loop).
+
+---
+
 ## 2026-05-25
 
 ### Added
