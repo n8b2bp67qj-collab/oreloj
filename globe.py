@@ -326,6 +326,14 @@ _last_code:   str | None = None      # last pen code handled (mirrored to UI)
 _last_action: str | None = None      # last action run, or None for a country tap
 
 
+def _kill_stray_players() -> None:
+    """Reap mpv players left over from a previous crashed run (stream and
+    tuning-noise loop). Two radios must never play at once. Called once at
+    startup, before this process spawns any player of its own."""
+    subprocess.run(["pkill", "-f", MPV_SOCKET], capture_output=True)
+    subprocess.run(["pkill", "-f", str(TUNING_WAV)], capture_output=True)
+
+
 def _start_noise() -> None:
     """Start the looping tuning static (idempotent, best-effort)."""
     global _noise
@@ -758,6 +766,7 @@ def main() -> None:
     load_actions()
     load_calibration()
     _ensure_chimes()
+    _kill_stray_players()
 
     if OS == 'Darwin':
         listener = kb.Listener(on_press=_on_press)
