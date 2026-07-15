@@ -5,6 +5,18 @@ Format: [date] — what changed and why.
 
 ---
 
+## 2026-07-15 (part 2) — world coverage
+
+### Added
+- **84 new countries covered** (`stations.csv`) — one verified station each, curated for the community/university/ad-free brief where available: Radio Študent Ljubljana (Europe's oldest student radio), Kanal 103 Skopje, Radio NABA→XO.FM Riga, USMARADIO San Marino, Yarmouk University FM Jordan, Campus 103.7 Malta, Shih Hsin University Taipei, Radio JKKNIU Bangladesh, GugakFM Seoul, Hà Nội Community Radio, Radio 1 Praha, Radio Ultra Moscow, Rondó Reykjavík, Radio 100,7 Luxembourg, Babel Montevideo, Radio Ndeke Luka Bangui, Femme Pawa Vanuatu, UpBeat Palau, Radio Kiribati… Total: 220 stations, 150 countries.
+- Every candidate was **stream-probed AND identity-checked** — Radio Browser is full of impostors (one Quran stream registered under 28 countries; "Offshore Radio" claiming the Marshall Islands; Mexican Exa FM claiming Andorra/Angola). ~40 such fakes rejected.
+- `COUNTRY_TO_ISO` (globe.py) + `STATION_COUNTRY_TO_ISO` (index.html) extended accordingly (73/82 new entries).
+
+### Known gaps (no suitable/live stream found)
+Samoa, Andorra, Afghanistan, American Samoa, Bahrain, Bhutan, Botswana, Congo-Brazzaville, Cyprus, Djibouti, Egypt, Fiji, Micronesia, Gabon, Gambia, Guinea, Eq. Guinea, India, Kuwait, Kazakhstan, Liberia, Lesotho, Montenegro, Monaco, Marshall Is., Mauritania, Nauru, PNG, Philippines, Qatar, Solomon Is., Singapore, Somalia, São Tomé, Eswatini, Tajikistan, Timor-Leste, Turkmenistan, Tonga, Tuvalu, Comoros — these fall back to the live Radio Browser lookup at tap time.
+
+---
+
 ## 2026-07-15
 
 ### Added
