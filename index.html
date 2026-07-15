@@ -1201,7 +1201,6 @@ const BUILT_IN = [
   {name:"Noods Radio",city:"Bristol",country:"UK",lat:51.45,lng:-2.6,web:"https://noodsradio.com",desc:"Bristol's fiercely independent station. Community-first and boundary-pushing since 2018."},
   {name:"Resonance Extra",city:"London",country:"UK",lat:51.5,lng:-0.09,web:"https://resonancefm.com",stream:"https://stream.resonance.fm/resonance-extra",desc:"Arts radio broadcasting experimental and avant-garde programming since 2002."},
   {name:"1BTN",city:"Brighton",country:"UK",lat:50.82,lng:-0.14,web:"https://1btn.fm",desc:"Brighton's underground community station. Multi-genre, zero commercial pressure."},
-  {name:"Pound & Yam",city:"London",country:"UK",lat:51.55,lng:-0.07,web:"https://poundandyam.com",desc:"Black-owned independent radio from Dalston. Eclectic genres, underrepresented voices."},
   {name:"Voices Radio",city:"London",country:"UK",lat:51.54,lng:-0.12,web:"https://voicesradio.co.uk",desc:"Broadcasting from Coal Drops Yard, King's Cross. Social issues, diversity and music."},
   {name:"Soho Radio",city:"London",country:"UK",lat:51.51,lng:-0.13,web:"https://sohoradio.com",desc:"Broadcasting from the heart of Soho since 2015. Eclectic music from London's most creative neighbourhood."},
   {name:"Aaja Music",city:"London",country:"UK",lat:51.52,lng:-0.08,web:"https://aaja.app",desc:"London music bar turned streaming space. Intimate live sets broadcast to the world."},
@@ -1234,7 +1233,6 @@ const BUILT_IN = [
   {name:"Radio Raheem",city:"Milan",country:"Italy",lat:45.46,lng:9.19,web:"https://radioraheem.it",desc:"Milan's cosmopolitan independent radio. A richly curated journey across all genres."},
   {name:"NEU Radio",city:"Bologna",country:"Italy",lat:44.49,lng:11.34,web:"https://neu.radio",desc:"Bologna's cultural hub radio. Afrobeats to indie rock, always with an Italian edge."},
   {name:"Radio Kapitał",city:"Warsaw",country:"Poland",lat:52.23,lng:21.01,web:"https://radiokapital.pl",desc:"Warsaw's experimental community radio. Avant-garde and Polish underground since 2019."},
-  {name:"Radio Punctum",city:"Prague",country:"Czechia",lat:50.08,lng:14.44,web:"https://radiopunctum.cz",desc:"Prague-based community radio. Experimental music and independent Czech voices."},
   {name:"The Lake Radio",city:"Copenhagen",country:"Denmark",lat:55.68,lng:12.57,web:"https://thelakeradio.com",desc:"Copenhagen's independent station. Carefully programmed music and cultural programming."},
   {name:"Retreat Radio",city:"Malmö",country:"Sweden",lat:55.6,lng:13.0,web:"https://retreatradio.com",desc:"Malmö's independent electronic station. A retreat from mainstream broadcasting."},
   {name:"IDA Radio",city:"Tallinn",country:"Estonia",lat:59.44,lng:24.75,web:"https://idaradio.com",desc:"Tallinn-via-Helsinki community radio. Underground music from the Baltics."},
@@ -1248,9 +1246,6 @@ const BUILT_IN = [
   // Africa
   {name:"Oroko Radio",city:"Accra",country:"Ghana",lat:5.56,lng:-0.2,web:"https://oroko.live",desc:"Not-for-profit community radio from Accra. Connecting African and diasporic voices globally."},
   // Asia
-  {name:"Boxout FM",city:"New Delhi",country:"India",lat:28.64,lng:77.22,web:"https://boxout.fm",desc:"India's first underground music radio. Promoting South Asian club culture globally since 2017."},
-  {name:"Seoul Community Radio",city:"Seoul",country:"South Korea",lat:37.57,lng:126.97,web:"https://seoulcommunityradio.com",desc:"Seoul's independent underground station. K-indie, electronic and authentic Korean culture."},
-  {name:"Inter FM 897",city:"Tokyo",country:"Japan",lat:35.68,lng:139.69,web:"https://interfm.co.jp",desc:"Tokyo's international music radio. A global perspective from Japan's capital."},
   // Oceania
   {name:"Triple J",city:"Sydney",country:"Australia",lat:-33.87,lng:151.21,web:"https://abc.net.au/triplej",desc:"Australia's national youth broadcaster. Australian artists and alternative music."},
   {name:"FBi Radio",city:"Sydney",country:"Australia",lat:-33.88,lng:151.2,web:"https://fbiradio.com",desc:"Sydney's independent community station. Arts-driven and deeply local."},
@@ -1275,9 +1270,8 @@ const BUILT_IN = [
   {name:"Rádio Batuta",city:"Rio de Janeiro",country:"Brazil",lat:-22.9,lng:-43.18,web:"https://radiobatuta.com.br",desc:"Brazilian cultural radio. MPB, jazz and samba with deep care."},
   {name:"Vorterix",city:"Buenos Aires",country:"Argentina",lat:-34.61,lng:-58.37,web:"https://vorterix.com",desc:"Buenos Aires' leading rock and alternative station. Voice of Argentine underground culture."},
   // Global
-  {name:"Poolsuite FM",city:"Online",country:"Global",lat:21.3,lng:-157.8,web:"https://poolsuite.net",desc:"The internet's most stylish leisure radio. Summer-eternal vibes and vintage poolside grooves."},
   // Other
-  {name:"Bangkok Community Radio",city:"Unknown",country:"Unknown",lat:13.75,lng:100.52,web:"https://www.bangkokcommunityradio.com/",stream:"https://bcr.radiocult.fm/stream",desc:"Bangkok Community Radio"},
+  {name:"Bangkok Community Radio",city:"Bangkok",country:"Thailand",lat:13.75,lng:100.52,web:"https://www.bangkokcommunityradio.com/",stream:"https://bcr.radiocult.fm/stream",desc:"Eclectic mix of local Thai and international DJs — house, techno, South East Asian grooves, funk and dub. The good stuff."},
   {name:"Radio Rumba",city:"Guayaquil",country:"Ecuador",lat:-2.18,lng:-79.88,web:"http://radiorumba.fm/",stream:"https://streamingecuador.net:8078/radiorumbanetwork",desc:"Rumba Rumba Rumba"},
   // South America
   {name:"FM La Tribu 88.5 Buenos Aires",city:"buenos aires",country:"Argentina",lat:-34.61,lng:-58.37,web:"http://www.fmlatribu.com.ar/",stream:"https://icecast.zeclogiccloud.com.de/fmlatribu",desc:"Espacio Cultural Bar Antro LGTBIQ+ refugio Antifascista en Buenos Aires"},
@@ -1292,25 +1286,22 @@ const BUILT_IN = [
   {name:"Mutante Rádio",city:"Sao Paulo",country:"Brazil",lat:-23.55,lng:-46.63,web:"https://www.mutanteradio.com/",stream:"https://s30.maxcast.com.br:8190/live?id=536069974467",desc:"A Casa do Underground!"},
   // Other
   {name:"Radio Kurruf",city:"Temuco",country:"Chile",lat:-38.74,lng:-72.6,web:"https://radiokurruf.org/",stream:"https://radio.latina.red/radiokurruf.mp3",desc:"From 2015 Radio Kvrruf es un medio de comunicación social, comunitario, libre y autónomo, difundimos información a través plataformas digitales y redes sociales, cubriendo hechos y situaciones asociadas a reivindicaciones sociales, defensa del territorio y la vida, promoción y defensa de los Derechos Humanos, y la búsqueda del buen vivir."},
-  {name:"Radio JGM",city:"Chile",country:"Chile",lat:-33.46,lng:-70.65,web:"https://radiojgm.uchile.cl/",stream:"https://sonic.streamingchilenos.com:7005/stream",desc:"User-added station."},
   {name:"Radio Siete",city:"Asuncion",country:"Paraguay",lat:-25.28,lng:-57.64,web:"https://www.siete.com.py/",stream:"https://rss1.siete.com.py:9433/stream",desc:"User-added station."},
   {name:"Radio Deseo",city:"La Paz",country:"Bolivia",lat:-16.5,lng:-68.15,web:"https://radiodeseo.com/",stream:"https://conectperu.com/8396/stream",desc:"Radio Deseo está abierta a toda propuesta radial que tenga como base: no al machismo ni la misoginia, no a la homofobia, no al racismo, no al clasismo, respeto al aborto y respeto a las mujeres en situación de prostitución."},
   {name:"Wayna Tambo",city:"El Alto",country:"Bolivia",lat:-16.5,lng:-68.18,web:"https://radiowaynatambobolivia.blogspot.com/",stream:"https://s2.myradiostream.com/5038/listen.mp3",desc:"Radio Intercultural y Comunitaria de la Red de la Diversidad que busca contribuir a la reconfiguración y vigorización de lo comunitario en Bolivia, desde la perspectiva del Vivir Bien como horizonte civilizatorio alternativo, y la Plurinacionalidad..."},
   {name:"Radio Filarmonía",city:"Lima",country:"Peru",lat:-12.05,lng:-77.04,web:"https://www.radiosdelperu.com.pe/radio-filarmonia",stream:"https://c22.radioboss.fm:8100/stream",desc:"Radio Filarmonía, una emisora peruana muy querida, se dedica a la música clásica y a la promoción de la cultura. Su programación incluye una gran variedad de contenidos, como conciertos en vivo, entrevistas a músicos y compositores destacados, y programas educativos y culturales que enriquecen la vida de sus oyentes."},
   // South America
-  {name:"Veneno",city:"Sao Paulo",country:"Brazil",lat:-23.55,lng:-46.63,web:"https://veneno.live/",stream:"https://veneno.out.airtime.pro/veneno_b",desc:"Created in 2018, Veneno was born from the idea of ​​unifying and solidifying the most diverse cultural initiatives. Based in downtown São Paulo, the radio today broadcasts a wide range of programs, dialoguing with different aesthetics and concepts."},
+  {name:"Veneno",city:"Sao Paulo",country:"Brazil",lat:-23.55,lng:-46.63,web:"https://veneno.live/",stream:"https://stream.zeno.fm/dy417tqqmd0uv",desc:"Created in 2018, Veneno was born from the idea of ​​unifying and solidifying the most diverse cultural initiatives. Based in downtown São Paulo, the radio today broadcasts a wide range of programs, dialoguing with different aesthetics and concepts."},
   // Other
   {name:"Areito Stéreo",city:"Quibdó",country:"Colombia",lat:5.69,lng:-76.66,web:"http://www.areito.com.co/",stream:"https://estructuraweb.com.co:9207/live",desc:"Areito, Danza que los habitantes aborígenes de las Antillas Mayores acompañaban con cantos durante sus fiestas y ritos religiosos. Su grupo objetivo es hombres y mujeres mayores de 30 años de estrato socio económico bajo, medio y alto."},
   {name:"Javeriana Estéreo 91,9",city:"Bogotá",country:"Colombia",lat:4.71,lng:-74.07,web:"https://javerianaestereo.com/player-javeriana-estereo",stream:"https://radio06.cehis.net/proxy/javerian?mp=%2Fstream",desc:"Cuando empezó a funcionar, el 7 de septiembre de 1977, la entonces llamada Emisora Javeriana se convirtió en la primera estación radial universitaria en la banda de FM en el país y también la primera de su género en Bogotá."},
-  {name:"La Salsera FM",city:"Caracas",country:"Venezuela",lat:10.48,lng:-66.88,web:"https://lasalserafm2.webnode.page/",stream:"https://zeno.fm/player/lasalserafm",desc:"Orientada a los seguidores de los ritmos tropicales, La Salsera FM presenta una propuesta radial que explora las diferentes facetas de la salsa. En su catálogo musical convergen estilos variados que van desde la salsa romántica y melódica, centrada en las letras, hasta los ritmos más percusivos y tradicionales orientados al baile. Este enfoque integral permite a la emisora conectar tanto con el oyente casual como con el aficionado más conocedor."},
+  {name:"La Salsera FM",city:"Caracas",country:"Venezuela",lat:10.48,lng:-66.88,web:"https://lasalserafm2.webnode.page/",stream:"https://stream.zeno.fm/4qbzbrvdmy8uv",desc:"Orientada a los seguidores de los ritmos tropicales, La Salsera FM presenta una propuesta radial que explora las diferentes facetas de la salsa. En su catálogo musical convergen estilos variados que van desde la salsa romántica y melódica, centrada en las letras, hasta los ritmos más percusivos y tradicionales orientados al baile. Este enfoque integral permite a la emisora conectar tanto con el oyente casual como con el aficionado más conocedor."},
   {name:"Rayan FM",city:"As-Suwayda",country:"Syria",lat:32.71,lng:36.57,web:"https://rayanfm.net/",stream:"https://a13.asurahosting.com/listen/r_fm/radio.mp3",desc:"Radio Al Rayyan is the first private radio that offers diverse content that covers the various interests of society and focusses on reviving heritage, starting from the heart of the city of Sweida to extending on the map in southern Syria. It provides the listener and the follower with a radio service that depends on accuracy and objectivity. It was founded in 2009 and since its establishment, it was considered the first station of its kind, which specialised in its launch to revive heritage and popular heritage."},
   {name:"Radio Rapar",city:"Paramaribo",country:"Suriname",lat:5.85,lng:-55.2,web:"https://www.dbsuriname.com/?radio=rapar",stream:"https://audio-edge-es6pf.mia.g.radiomast.io/d7e8093b-6a7e-4442-a096-37f259cb7092",desc:"Suriname Weird Station"},
-  {name:"Chwiti Web",city:"Cayenne",country:"French Guyana",lat:4.93,lng:-52.33,web:"https://www.chwitiweb.com/",stream:"https://play.radioking.io/chwitiweb",desc:"Chwitiweb est une petite webradio Guyanaise qui promeut la musique reggae et les messages positifs. Chwitiweb... vini koute sa ki chouit"},
   {name:"NTN Radio FM",city:"Georgetown",country:"Guyana",lat:6.8,lng:-58.16,web:"https://onlineradiobox.com/gy/ntnradio/",stream:"https://auds1.intacs.com/ntnradio",desc:"Bolywood in south america. No idea why.. Let’s go"},
   {name:"Radio Vox 103.5 FM",city:"Aguadulce",country:"Panama",lat:8.44,lng:-80.55,web:"https://vox1035laradio.com/",stream:"https://cast1.my-control-panel.com/proxy/voxlarad/stream",desc:"La convergencia digital de música, tecnología y tendencias. Donde el sonido cobra vida."},
   {name:"Osa Radio Online",city:"Palmar Norte",country:"Costa Rica",lat:8.95,lng:-83.46,web:"https://onlineosaradio.blogspot.com/",stream:"https://radioscr.digitaltvcr.xyz/listen/osaonline/osaradio",desc:"Transmitiendo desde el SUR SUR para todo el mundo"},
   {name:"Radio Maria",city:"Panama City",country:"Panama",lat:8.99,lng:-79.52,web:"https://radiomaria.pa/",stream:"https://dreamsiteradiocp2.com/proxy/rmpanama2?mp=/stream",desc:"Radio María es un instrumento de la nueva evangelización que se pone al servicio de la Iglesia del Tercer Milenio, como emisora católica comprometida en el anuncio de la conversión a través de una parrilla de programación que ofrece una amplio espacio a la oración, a la catequesis y a la promoción humana."},
-  {name:"Radio U",city:"San José",country:"Costa Rica",lat:9.93,lng:-84.08,web:"https://radios.ucr.ac.cr/quienes-somos",stream:"https://r90.letio.com/io/?gs=8126&gsm=8126&type=live.m3u8",desc:"Las Radioemisoras de la Universidad de Costa Rica (Radios UCR) promovemos la libre manifestación de ideas mediante una programación diversa, creativa y de calidad. Somos tres emisoras de servicio público dedicadas a la difusión de contenidos artísticos, educativos, así como al análisis de la actualidad del país y de más allá de sus fronteras."},
   {name:"Radio Cultural De Puriscal",city:"Santiago De Puriscal",country:"Costa Rica",lat:9.83,lng:-84.32,web:"https://www.radioculturaldepuriscal.com/",stream:"https://stream.zeno.fm/ucos1vhzikbtv",desc:"Un espacio de historias de éxito y superación; que tiene como propósito resaltar e incentivar los valores propios de nuestros pueblos y sus actores. La producción está a cargo de la periodista Jemima Estrada Palacios, junto a Radio Cultural de Puriscal 88.3 FM, para todos ustedes. ¡Esperamos que lo disfruten!"},
   {name:"Bluefields",city:"Bluefields",country:"Nicaragua",lat:11.99,lng:-83.77,stream:"https://a10.asurahosting.com:8570/radio.mp3/;",desc:"The Best Country Reggae, Soca, Reggae, And More"},
   {name:"Nicaragua Dancehall",city:"Managua",country:"Nicaragua",lat:12.15,lng:-86.28,web:"http://nicaraguareggae.com/",stream:"https://stream.zeno.fm/frfely84cjguv",desc:"Dancehall todo el día y toda la noche"},
@@ -1321,8 +1312,6 @@ const BUILT_IN = [
   {name:"Radio Gladys Palmora",city:"Madrid",country:"Spain",lat:40.42,lng:-3.7,web:"https://gladyspalmera.com/",stream:"https://streams.radio.co/s496c4d2e8/listen",desc:"En Radio Gladys Palmera nos gustan los ritmos con mucha personalidad, música con olor y sabor intensos, que suene distinguible, contundente y, porqué no, que sea arriesgada."},
   // Other
   {name:"Meow Club 91",city:"Tegucigalpa",country:"Honduras",lat:14.08,lng:-87.21,web:"https://thenonstopradio.com/radio/meow-club-91-radio",stream:"https://stream.zeno.fm/0chh40kgdwzuv?rj-ttl=5&rj-tok=AAABfAK1xvMAyZ0wO9HSPLNGOA",desc:"User-added station."},
-  {name:"Radio Otoro",city:"Otoro",country:"Honduras",lat:14.48,lng:-88.07,stream:"https://stream.playerlive.info:8089/live.aac",desc:"Latin Music"},
-  {name:"Radio Guarajambala",city:"Tegucigalpa",country:"Honduras",lat:14.08,lng:-87.21,web:"https://www.radioscomunitarias.info/radio-guarajambala/",stream:"https://stream.codigosur.org/guarajambala.mp3",desc:"La Red Mesoamericana es una red estratégica de alianzas orgánicas que reúne a varias radios comunitarias que nacen para fortalecer las luchas de las organizaciones sociales y los pueblos a las que pertenecen. Las organizaciones y radios miembros se definen como “medios comunitarios que difunden, contribuyen y promueven la conciencia social y cultural, orientando y educando a nuestros pueblos, y rompiendo el cerco mediático que mantiene a nuestros pueblos desinformados”."},
   {name:"Arpas",city:"San Salvador",country:"El Salvador",lat:13.7,lng:-89.22,web:"https://arpas.org.sv/",stream:"https://stream.codigosur.org/arpas.mp3",desc:"Incidir conjuntamente con los sectores populares en la construcción de una sociedad democrática, equitativa y sustentable, a través de la comunicación participativa y alternativa y la educación popular."},
   {name:"Radio Santa Cruz",city:"Guatemala",country:"Guatemala",lat:15.5,lng:-91.52,web:"https://radiosantacruzsanildefonso.com/",stream:"https://servidor26.brlogic.com:7014/live",desc:"La voz católica de la Diócesis de Huehuetenango, ubicada en San Ildefonso Ixtahuacán. Evangelizamos, informamos y acompañamos con fe, esperanza y amor."},
   {name:"Vibra FM",city:"Quetzaltenango",country:"Guatemala",lat:14.83,lng:-91.52,web:"https://www.corporacionradialfm.com/vibrafm",stream:"https://radio.garden/api/ara/content/listen/dI0QR4Sx/channel.mp3?1778841486166",desc:"Somos una empresa con radios lideres en distintos puntos del País; Somos su mejor solución en publicidad para su empresa. Para contactarnos por favor puedes hacerlo por las siguientes vías"},
@@ -1331,7 +1320,6 @@ const BUILT_IN = [
   {name:"GT Reggae Radio",city:"Black River",country:"Jamaica",lat:18.02,lng:-77.85,web:"https://www.gtreggaeradio.live/i",stream:"https://radio.garden/api/ara/content/listen/Sxv8VfCU/channel.mp3?1778842941158",desc:"Station Info, GT Reggae Radio was started in 2020 by GT Taylor as a support for the people of Jamaica and the World to ease the stress of the pandemic.   GT Taylor has been a Reggae Radio Announcer/Presenter in Jamaica, W.I. for nearly 30 years. He can be heard on Reggae Radio with two popular Reggae & Dancehall programs every week. GT Taylor has been keeping listeners in Jamaica, also Worldwide listeners through the Internet, glued to his broadcasts with his magnetic vibes and an energy that is hard to compare."},
   {name:"Estéreo Centro",city:"Santa Clara",country:"Cuba",lat:22.41,lng:-79.97,web:"https://radioestereocentro.blogspot.com/",stream:"https://radio.garden/api/ara/content/listen/EkZHPhCF/channel.mp3?1778843753857",desc:"User-added station."},
   {name:"Radio Caribe",city:"Nueva Gerona",country:"Cuba",lat:21.88,lng:-82.8,web:"https://www.radiocaribe.icrt.cu/",stream:"https://icecast.teveo.cu/dXhtHs4P",desc:"La emisora Radio Caribe, es la única de su tipo existente en el Municipio Especial Isla de la Juventud, a ella se le adjunta la radio Base de Cocodrilo en el sur del territorio pinero."},
-  {name:"La Voz Del Niquel",city:"Moa",country:"Cuba",lat:20.66,lng:-74.94,web:"https://www.lavozdelniquel.icrt.cu/",stream:"https://icecast.teveo.cu/nj4PLTHR",desc:"Emisora La Voz Del Níquel creada el 24 de julio de 1979 cuenta con una programación variada de 18 horas de transmisión."},
   {name:"Alter Radio",city:"Delmas",country:"Haiti",lat:18.54,lng:-72.3,web:"https://www.alterradio.org/",stream:"https://stream.zeno.fm/s096v26gfrruv",desc:"AlterRadio est une station du Groupe Médialternatif"},
   {name:"Radio Seybo",city:"Santo Domingo",country:"Dominican Republic",lat:18.47,lng:-69.95,web:"https://www.radioseibo.org/",stream:"https://radioseibo.dominicos.org:8443/radio.ogg",desc:"Radio Seybo surge como un medio de comunicación al servicio de la evangelización el 4 de agosto de 1974, cuando la Orden de Predicadores adquiere el 100% de las acciones de sus antiguos propietario los Hermanos Cepeda de Hato Mayor, quienes fundaron a Radio Seybo el 1 de agosto de 1972 y mantuvieron esta estación como un medio comercial durante dos años."},
 ];
@@ -1434,6 +1422,35 @@ let editingName = null;            // name of station being edited (null = addin
 let editingType = null;            // 'custom' | 'builtin' | null
 let editingBuiltinKey = null;      // for built-in edits: the original BUILT_IN.name being overridden
 const audio = document.getElementById('audio-el');
+
+// ── HLS (.m3u8) support: Chrome/Firefox can't play HLS natively, lazy-load hls.js ──
+let _hls = null, _hlsLoader = null;
+function _loadHlsJs() {
+  if (window.Hls) return Promise.resolve();
+  if (!_hlsLoader) _hlsLoader = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js';
+    s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+  return _hlsLoader;
+}
+async function setAudioSource(url) {
+  if (_hls) { _hls.destroy(); _hls = null; }
+  const isHls = /\.m3u8(\?|$)/i.test(url);
+  if (isHls && !audio.canPlayType('application/vnd.apple.mpegurl')) {
+    try {
+      await _loadHlsJs();
+      if (window.Hls && Hls.isSupported()) {
+        _hls = new Hls({ maxBufferLength: 20 });
+        _hls.loadSource(url);
+        _hls.attachMedia(audio);
+        return;
+      }
+    } catch (e) { /* CDN blocked — fall through to native attempt */ }
+  }
+  audio.src = url;
+}
 
 function isCustom(s) {
   return custom.some(c => c.name === s.name);
@@ -1572,7 +1589,7 @@ async function playStation(idx) {
     return;
   }
   current = s;
-  audio.src = url; audio.volume = parseFloat(document.getElementById('vol').value);
+  await setAudioSource(url); audio.volume = parseFloat(document.getElementById('vol').value);
   try { await audio.play(); playing = true; }
   catch(e) {
     stopStatic(150);
@@ -2701,6 +2718,24 @@ const STATION_COUNTRY_TO_ISO = {
   "venezuela":"VE",
   "bahamas":"BS",
   "belize":"BZ",
+  "austria":"AT",
+  "croatia":"HR",
+  "finland":"FI",
+  "hungary":"HU",
+  "indonesia":"ID",
+  "kenya":"KE",
+  "lithuania":"LT",
+  "norway":"NO",
+  "philippines":"PH",
+  "romania":"RO",
+  "serbia":"RS",
+  "singapore":"SG",
+  "south africa":"ZA",
+  "switzerland":"CH",
+  "thailand":"TH",
+  "turkey":"TR",
+  "united arab emirates":"AE","uae":"AE",
+  "china":"CN","hong kong":"CN",
 };
 
 function isoOfStation(s) {
@@ -3134,7 +3169,7 @@ async function playRBForCountry(iso, countryName, regionLat, regionLng) {
         desc: `${(station.tags || "").split(",").slice(0,3).join(", ") || "Live"} · ${countryName}`,
       };
       current = synth;
-      audio.src = url; audio.volume = parseFloat(document.getElementById('vol').value);
+      await setAudioSource(url); audio.volume = parseFloat(document.getElementById('vol').value);
       try { await audio.play(); playing = true; }
       catch (e) {
         stopStatic(150);
@@ -3228,7 +3263,7 @@ function runActionZone(action) {
 async function playUrl(url, name) {
   if (!url) return;
   current = { name: name || 'preset', city: '', country: '' };
-  audio.src = url;
+  await setAudioSource(url);
   audio.volume = parseFloat(document.getElementById('vol').value);
   document.getElementById('pname').textContent = name || 'preset';
   try { await audio.play(); playing = true; } catch (e) {}
