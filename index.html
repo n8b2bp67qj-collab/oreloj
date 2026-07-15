@@ -1028,6 +1028,9 @@ async function ghSaveStations() {
   const { token } = ghCfg();
   if (!token) { _ghStatus('⚠ no token — saved locally only', false); return; }
   _ghStatus('saving…', null);
+  // Merge the remote CSV first so a stale browser cache never clobbers
+  // stations added elsewhere (another device, the Pi, or a repo commit).
+  try { await ghLoadStations(); } catch (e) {}
   const ok = await ghPutFile('stations.csv', buildRadioCsv(), 'update stations via website');
   _ghStatus(ok ? '✓ saved to GitHub' : '✗ save failed', ok);
 }
@@ -3042,7 +3045,10 @@ function buildRadioCsv() {
     let continent = ISO_TO_CONTINENT[iso] || '';
     if (!continent && s.country === 'Global') continent = 'Global';
     const fav = favs.has(s.name) ? 'yes' : '';
-    rows.push([continent, s.country, s.city, s.name, s.desc || '', s.web || '', s.stream || '', fav, s.lat || '', s.lng || ''].map(csvEscape).join(','));
+    // Never export an empty URL for a streamless BUILT_IN whose stream lives in the
+    // CSV — that would erase the URL from stations.csv for everyone (incl. the Pi).
+    const stream = s.stream || _builtinStreamFix[s.name] || '';
+    rows.push([continent, s.country, s.city, s.name, s.desc || '', s.web || '', stream, fav, s.lat || '', s.lng || ''].map(csvEscape).join(','));
   }
   return rows.join('\n') + '\n';
 }
