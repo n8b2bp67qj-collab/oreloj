@@ -149,6 +149,15 @@ COUNTRY_TO_ISO: dict[str, str] = {
     "Panama": "PA", "Costa Rica": "CR", "Honduras": "HN", "Guatemala": "GT",
     "Jamaica": "JM", "Cuba": "CU", "Haiti": "HT",
     "Dominican Republic": "DO", "El Salvador": "SV", "Malaysia": "MY",
+    "Mexico": "MX", "Belize": "BZ", "Bahamas": "BS", "United States": "US",
+    "Austria": "AT", "Croatia": "HR", "Finland": "FI", "Hungary": "HU",
+    "Kenya": "KE", "Lithuania": "LT", "Norway": "NO", "Romania": "RO",
+    "Serbia": "RS", "South Africa": "ZA", "Switzerland": "CH", "Turkey": "TR",
+    "United Arab Emirates": "AE", "UAE": "AE", "China": "CN", "Hong Kong": "CN",
+    "Czech Republic": "CZ", "Philippines": "PH", "Singapore": "SG",
+    "Iceland": "IS", "Latvia": "LV", "Belarus": "BY", "Kazakhstan": "KZ",
+    "Jordan": "JO", "Lebanon": "LB", "Egypt": "EG", "Iran": "IR",
+    "Pakistan": "PK", "Taiwan": "TW", "Vietnam": "VN", "Turtle Island": "US",
 }
 
 

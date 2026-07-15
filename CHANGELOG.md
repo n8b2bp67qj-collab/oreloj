@@ -5,6 +5,23 @@ Format: [date] — what changed and why.
 
 ---
 
+## 2026-07-15
+
+### Added
+- **22 new stations across 16 new countries** (`stations.csv`) — Austria, China (Hong Kong), Croatia, Finland, Hungary, Indonesia, Kenya, Lithuania, Norway, Romania, Serbia, South Africa, Switzerland, Turkey, UAE + fixes for Japan, Greece, Ukraine, Thailand. Sourced from community-radio-index.com, every stream verified live AND identity-checked via ICY metadata (8 CRI records pointed at the wrong station's stream and were rejected).
+- **HLS playback** (`index.html`) — `.m3u8` streams now play in Chrome/Firefox via lazy-loaded hls.js (The Lot Radio, RNE Radio 3, Hong Kong Community Radio). Safari and Pi mpv already handled them natively.
+- **COUNTRY_TO_ISO additions** (`globe.py`) — Mexico, Belize, Bahamas and "United States" were missing, so their CSV stations were silently skipped on the Pi; also added all new countries + spares (Iceland, Latvia, Jordan, Taiwan, Vietnam…). Website `STATION_COUNTRY_TO_ISO` extended to match.
+
+### Fixed
+- **10 dead stream URLs replaced** (`stations.csv`) — Rinse FM, The Lake Radio, Movement Radio, CKUT, La Salsera FM, Radio Nopal, Veneno, The Lot Radio, Radio 3 RNE, 20ft Radio. La Salsera + Veneno also had dead streams hardcoded in `BUILT_IN`.
+- **Bangkok Community Radio** — country was "Unknown"; now Asia/Thailand/Bangkok with a real description.
+- **Duplicate rows removed** — Belize ×3 (radio.garden cache-buster twins), Radio Habana Cuba (website-as-URL copy), KLPM FM, FM La Tribu.
+
+### Removed
+- **13 dead stations with no working replacement** — Pound & Yam, Poolsuite FM (expired signed URL), Drama Radio (malformed Vimeo URL), Inter FM 897, Boxout FM, Seoul Community Radio (moved to video-only), Radio JGM, Radio U, Radio Otoro, Radio Guarajambala, La Voz Del Niquel, Radio Punctum, Chwiti Web. Their countries keep coverage via other stations or the Radio Browser fallback. Also dropped from `BUILT_IN` where present.
+
+---
+
 ## 2026-06-10
 
 ### Added
