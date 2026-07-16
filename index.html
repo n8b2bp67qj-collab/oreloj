@@ -911,9 +911,11 @@ audio { display: none; }
 <script src="https://unpkg.com/topojson-client@3/dist/topojson-client.min.js"></script>
 <script>
 // ── Pi API helpers ────────────────────────────────────────────────────────
-// PI_BASE is '' when running on the Pi itself (oreloj.local), otherwise
-// points cross-origin at the Pi's admin server.
-const PI_BASE = (location.hostname === 'oreloj.local' || location.hostname === 'localhost')
+// PI_BASE is '' when running on the Pi itself (any *.local hostname —
+// oreloj.local, oreloj2.local, …), otherwise points cross-origin at the
+// primary globe's admin server. This lets the same file run unchanged on
+// every globe: each one talks to itself.
+const PI_BASE = (location.hostname.endsWith('.local') || location.hostname === 'localhost')
   ? '' : 'http://oreloj.local:5000';
 
 async function piGet(path) {
