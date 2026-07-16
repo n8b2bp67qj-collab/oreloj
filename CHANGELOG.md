@@ -5,6 +5,18 @@ Format: [date] — what changed and why.
 
 ---
 
+## 2026-07-16 — full Community Radio Index import
+
+### Added
+- **65 more CRI stations** (`stations.csv`) — the remaining working, identity-verified streams from community-radio-index.com, mostly deepening already-covered countries: UK +13 (Resonance FM, Clyde Built, Subtle, Kindred, Sister Midnight…), Netherlands +6 (Echobox, Operator, Radio Worm's siblings), USA +8 (BFF.fm, KFAI, KDRT, KUAA, KUCR), New Zealand +4 (95bFM, RDU), France +6 (Tsugi, Radio Panik's cousins, Rinse France), Germany +6 (Radio X Frankfurt, Corax, radio.syg.ma)… Total: **285 stations**.
+- Reform Radio, RadioActive.FM 88.6 and Lusophonica rescued with corrected stream URLs (CRI's were stale; confirmed via Radio Browser cross-reference).
+
+### Rejected during verification (~40)
+- CRI's own map shows 317 pins, but **105 have no stream in their API** (website-only listings) and **48 more are dead** — parity with their pin count is impossible for *playable* stations.
+- Impostor streams caught by ICY identity checks: 5 stations pointing at Slovak "Fun Radio", 4 at Dutch "Ice Radio", plus Planet Wax→German Planet Radio, Hotel Radio Paris→Hotel Costes, Radio X Basel→Radio X Cagliari, "Disco Duro Venezuela"→Italian Euro Disco, and three stations sharing one anonymous msvdn CDN URL.
+
+---
+
 ## 2026-07-15 (part 2) — world coverage
 
 ### Added
