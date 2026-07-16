@@ -1,7 +1,31 @@
-# Oreloj — Pi Standalone Setup
+# Oreloj — Provisioning a Globe Pi
 
-Pi 3 A+, headless.  Hostname: `oreloj`, user: `oreloj`.
-SSH: `ssh oreloj@oreloj.local`
+How to turn a blank Raspberry Pi into a working Oreloj globe.
+Works for the first globe **and** any additional ones.
+
+Hardware: Pi 3 A+ (or similar), headless. User: `oreloj` on every globe.
+
+---
+
+## Naming rule (important with several globes)
+
+Every globe on the same network needs a **unique hostname** — think of it as
+a street address: two houses with the same address means the mail goes to the
+wrong one. The first globe is `oreloj`; name the next ones `oreloj2`,
+`oreloj3`, …
+
+Each globe is then reached at its own address:
+
+| Globe | SSH | Admin UI |
+|---|---|---|
+| oreloj | `ssh oreloj@oreloj.local` | http://oreloj.local:5000 |
+| oreloj2 | `ssh oreloj@oreloj2.local` | http://oreloj2.local:5000 |
+
+Everything else in this guide is identical for every globe.
+
+> `index.html` (2026-07-16 or later) auto-detects which globe it is served
+> from — no per-globe edits needed. The public GitHub Pages site always
+> talks to the primary globe (`oreloj.local`).
 
 ---
 
@@ -10,7 +34,7 @@ SSH: `ssh oreloj@oreloj.local`
 Use **Raspberry Pi Imager** → **Raspberry Pi OS Lite (64-bit)**.
 In the customisation panel (gear icon) set:
 
-- Hostname: `oreloj`
+- Hostname: `oreloj` (or `oreloj2`, `oreloj3`, … — see naming rule)
 - Username: `oreloj`
 - WiFi SSID + password
 - Enable SSH (password auth is fine)
@@ -23,22 +47,32 @@ In the customisation panel (gear icon) set:
 
 ## 2. First boot — install dependencies
 
+Open a **new Terminal window on your Mac** and connect
+(replace `oreloj.local` with the new globe's name, e.g. `oreloj2.local`):
+
 ```bash
 ssh oreloj@oreloj.local
+```
 
+Everything below runs **on the Pi, inside that ssh session**:
+
+```bash
 sudo apt update && sudo apt install -y \
+    git \
     python3-pip \
     python3-evdev \
+    python3-requests \
+    python3-flask \
     mpv
 ```
 
-No PipeWire or Bluetooth packages yet — audio is phase 2.
+(Bluetooth/PipeWire packages come later, in the audio step.)
 
 ---
 
 ## 3. Add user to the input group
 
-This lets globe.py grab the pen's evdev device without root:
+This lets `globe.py` read the pen without root:
 
 ```bash
 sudo usermod -aG input oreloj
@@ -49,23 +83,22 @@ ssh oreloj@oreloj.local
 
 ---
 
-## 4. Copy project files
+## 4. Get the project files
 
-From your Mac:
+The repo is public — clone it straight onto the Pi (no token needed):
 
 ```bash
-cd ~/Documents/Claude/Projects/Web\ Radio\ Interactive\ Globe
-
-scp globe.py stations.csv 99-globe-hid.rules oreloj@oreloj.local:~/
+git clone https://github.com/n8b2bp67qj-collab/oreloj.git ~/globe
 ```
 
-On the Pi:
+Because `~/globe` is a git clone, the admin UI's **update** feature
+(`git pull` + service restart) works out of the box — future updates
+don't need scp at all.
+
+Install the pen's udev rule:
 
 ```bash
-mkdir -p ~/globe
-mv ~/globe.py ~/stations.csv ~/globe/
-
-sudo mv ~/99-globe-hid.rules /etc/udev/rules.d/
+sudo cp ~/globe/99-globe-hid.rules /etc/udev/rules.d/
 sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
 
@@ -73,16 +106,19 @@ sudo udevadm control --reload-rules && sudo udevadm trigger
 
 ## 5. Test playback manually
 
-Plug the pen USB into the Pi, then:
+Plug the pen's USB into the Pi, then:
 
 ```bash
 python3 ~/globe/globe.py
 ```
 
 Tap a country — you should hear a stream within a few seconds on the 3.5mm jack.
-Check logs with `journalctl --user -u globe -f` once the service is installed.
 
-### Calibration (same as Mac)
+### Calibration check
+
+`calibration.csv` and `actions.json` from the repo already map the pen codes
+for the SmartGlobe Horizon SG0218-12 — an identical globe model should work
+as-is. To verify (or map a different sticker set):
 
 ```bash
 python3 ~/globe/globe.py --calibrate
@@ -93,25 +129,43 @@ On Ctrl+C, an exit summary prints a ready-to-paste CODE_MAP snippet.
 
 ---
 
-## 6. Install as a systemd user service
+## 6. Install the services
+
+Two user services (the radio itself + the admin web UI):
 
 ```bash
 mkdir -p ~/.config/systemd/user
-cp ~/globe.service ~/.config/systemd/user/
+cp ~/globe/globe.service ~/globe/admin.service ~/.config/systemd/user/
 
 systemctl --user daemon-reload
-systemctl --user enable globe
-systemctl --user start globe
+systemctl --user enable --now globe admin
 
-# Allow the service to run without a logged-in session:
+# Allow the services to run without a logged-in session:
 sudo loginctl enable-linger oreloj
 ```
 
+Two system units (WiFi hotspot fallback + Bluetooth speaker reconnect):
+
+```bash
+sudo cp ~/globe/oreloj-hotspot.service /etc/systemd/system/
+sudo cp ~/globe/bt-autoconnect.service ~/globe/bt-autoconnect.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable oreloj-hotspot.service
+sudo systemctl enable --now bt-autoconnect.timer
+```
+
+Check both user services are alive:
+
+```bash
+systemctl --user is-active globe admin     # expect: active active
+```
+
+Then open http://oreloj.local:5000 (or `oreloj2.local:5000`, …) in a browser —
+you should see the globe interface.
+
 ---
 
-## 7. Audio — combined 3.5mm + Bluetooth sink  *(phase 2)*
-
-> Come back here once the software layer is solid.
+## 7. Audio — combined 3.5mm + Bluetooth sink
 
 ```bash
 sudo apt install -y pipewire-audio bluez bluetooth
@@ -127,7 +181,7 @@ bluetoothctl
   connect AA:BB:CC:DD:EE:FF
   quit
 
-# Then set BT_MAC in audio_setup.sh and run it:
+# Then run audio_setup.sh with the MAC:
 bash ~/globe/audio_setup.sh AA:BB:CC:DD:EE:FF
 ```
 
@@ -138,13 +192,31 @@ systemctl --user restart globe
 
 ---
 
+## 8. How data flows between globes (multi-globe notes)
+
+| File | Behaviour |
+|---|---|
+| `stations.csv` | Shared via GitHub. Every globe pulls the same list; the website's "Push to GitHub" merges the remote first, so globes don't clobber each other. |
+| `actions.json`, `calibration.csv` | Same for identical globe models. On-device edits (admin UI) stay local until pushed. |
+| `favourites.json` | **Per-globe, never synced.** Each globe keeps its own favourites. |
+
+### Updating a globe later
+
+Preferred: the update banner in the globe's own web UI (runs `git pull` and
+restarts services). Or by hand:
+
+```bash
+ssh oreloj@oreloj2.local "cd ~/globe && git pull origin main && systemctl --user restart globe admin"
+```
+
+---
+
 ## Useful commands
 
 | What | Command |
 |------|---------|
-| Check status | `systemctl --user status globe` |
+| Check status | `systemctl --user status globe admin` |
 | Live logs | `journalctl --user -u globe -f` |
 | Restart after editing | `systemctl --user restart globe` |
-| Stop | `systemctl --user stop globe` |
 | Check audio sinks | `pactl list short sinks` |
 | Check pen is detected | `python3 -c "import evdev; print([d.name for d in map(evdev.InputDevice, evdev.list_devices())])"` |
