@@ -5,6 +5,14 @@ Format: [date] — what changed and why.
 
 ---
 
+## 2026-07-16 (part 2) — multi-globe support
+
+### Changed
+- **`PI_BASE` hostname gate** (`index.html`) — now treats *any* `*.local` hostname as "running on the Pi itself", so the same file works unchanged on `oreloj2.local`, `oreloj3.local`, … Previously only `oreloj.local` qualified; a second globe's UI would have talked to the first globe's API. Public GitHub Pages site still targets the primary globe.
+- **`SETUP.md` rewritten** as a complete provisioning guide: admin UI + services, git clone instead of scp (enables the admin UI's `git pull` update path on fresh Pis), hotspot + bt-autoconnect units, unique-hostname rule for multiple globes, per-device vs shared data files.
+
+---
+
 ## 2026-07-16 — full Community Radio Index import
 
 ### Added
