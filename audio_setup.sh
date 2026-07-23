@@ -12,8 +12,13 @@ for i in $(seq 1 10); do pactl info &>/dev/null && break; sleep 1; done
 pactl info &>/dev/null || { echo "ERROR: audio server not running"; exit 1; }
 log "Audio server ready"
 
+# Built-in sink naming varies by OS release: "bcm2835" (bookworm and earlier),
+# "platform-…mailbox" (trixie). Exclude bluez so we never grab the BT speaker,
+# and never let an empty grep kill the script (set -e).
 BUILTIN_SINK=$(pactl list short sinks \
-    | grep -E "bcm2835|analog-stereo|headphones" | head -1 | awk '{print $2}')
+    | grep -v -i "bluez" \
+    | grep -Ei "bcm2835|analog-stereo|headphones|mailbox" \
+    | head -1 | awk '{print $2}' || true)
 if [[ -z "$BUILTIN_SINK" ]]; then
     log "WARNING: built-in sink not found — listing sinks:"; pactl list short sinks
     BUILTIN_SINK="alsa_output.platform-bcm2835_audio.stereo-fallback"

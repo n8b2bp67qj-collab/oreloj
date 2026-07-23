@@ -157,6 +157,15 @@ sudo systemctl enable oreloj-hotspot.service
 sudo systemctl enable --now bt-autoconnect.timer
 ```
 
+`oreloj-hotspot.sh` activates a NetworkManager profile named `hotspot` — it
+does **not** create it. Create it once:
+
+```bash
+sudo nmcli con add type wifi ifname wlan0 con-name hotspot autoconnect no \
+    ssid Oreloj 802-11-wireless.mode ap 802-11-wireless.band bg \
+    ipv4.method shared ipv4.addresses 192.168.4.1/24
+```
+
 Check both user services are alive:
 
 ```bash
@@ -171,8 +180,17 @@ you should see the globe interface.
 ## 7. Audio — combined 3.5mm + Bluetooth sink
 
 ```bash
-sudo apt install -y pipewire-audio bluez bluetooth
+sudo apt install -y pipewire-audio bluez bluetooth pulseaudio-utils alsa-utils
+
+# Fresh Pi OS images ship with Bluetooth rfkill-blocked — unblock it once
+# (persists across reboots). Without this, scan/pair fails with
+# "PowerState: off-blocked".
+sudo rfkill unblock bluetooth
+bluetoothctl power on
 ```
+
+(`pulseaudio-utils` provides `pactl`, needed by admin.py's combine-sink rebuild
+and volume control; `alsa-utils` provides `amixer`.)
 
 ### Headless Bluetooth fix (required — do this before pairing)
 
