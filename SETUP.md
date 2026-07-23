@@ -63,8 +63,11 @@ sudo apt update && sudo apt install -y \
     python3-evdev \
     python3-requests \
     python3-flask \
-    mpv
+    mpv \
+    espeak-ng
 ```
+
+(`espeak-ng` is the text-to-speech voice that announces the country when you tap.)
 
 (Bluetooth/PipeWire packages come later, in the audio step.)
 
@@ -169,7 +172,44 @@ you should see the globe interface.
 
 ```bash
 sudo apt install -y pipewire-audio bluez bluetooth
+```
 
+### Headless Bluetooth fix (required — do this before pairing)
+
+On a headless Pi (no monitor, no logged-in desktop session), WirePlumber
+refuses to take over Bluetooth audio because no "seat" is active. Disable
+seat-monitoring for the Bluetooth monitor:
+
+```bash
+mkdir -p ~/.config/wireplumber/wireplumber.conf.d
+cat > ~/.config/wireplumber/wireplumber.conf.d/80-bluez-headless.conf <<'EOF'
+# Headless Pi: no logind seat is ever active, so BlueZ audio would never
+# be picked up. Run the Bluetooth monitor unconditionally.
+wireplumber.profiles = {
+  main = {
+    monitor.bluez.seat-monitoring = disabled
+  }
+}
+EOF
+systemctl --user restart wireplumber pipewire pipewire-pulse
+```
+
+Two more things that can silently steal or block Bluetooth audio — check both:
+
+```bash
+# 1. A display manager's greeter session runs its own pipewire, which
+#    grabs the BT endpoints before the oreloj user can. Pi OS Lite has
+#    none, but if lightdm (or another greeter) is installed, disable it:
+systemctl is-enabled lightdm 2>/dev/null && sudo systemctl disable --now lightdm
+
+# 2. There must be NO system-level admin.service — it would squat port
+#    5000 and crash-loop the user unit. This must print nothing:
+systemctl list-unit-files | grep admin.service
+```
+
+### Pair the speaker
+
+```bash
 # Pair your Bluetooth speaker:
 bluetoothctl
   power on
